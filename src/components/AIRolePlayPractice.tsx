@@ -3,19 +3,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import {
-  Play,
-  Pause,
   Stop,
   Microphone,
   MicrophoneSlash,
-  ChatCircleDots,
-  Lightning,
-  TrendUp,
   CheckCircle,
-  WarningCircle,
   SpeakerHigh,
   SpeakerSlash,
   Building,
@@ -24,18 +17,17 @@ import {
 import { toast } from 'sonner';
 import {
   getPersonasForCompany,
-  getPersonaByType,
   generateProspectResponse,
   B2BPersonaType,
   ConversationContext,
   AIMessage
 } from '@/lib/aiRolePlayService';
-import { getVoiceAgentForB2BPersona, VOICE_AGENTS } from '@/lib/voiceAgentConfig';
+import { getVoiceAgentForB2BPersona } from '@/lib/voiceAgentConfig';
 import { geminiTTS } from '@/lib/geminiTTSService';
 import { edgeTTS } from '@/lib/edgeTtsService';
 import { deepgramService } from '@/lib/deepgramService';
 import { useCompany } from '@/contexts/CompanyContext';
-import { COMPANY_PROFILES, CompanyType } from '@/lib/companySelector';
+import { COMPANY_PROFILES } from '@/lib/companySelector';
 import type { B2BPersona } from '@/lib/b2bPersonas';
 
 export default function AIRolePlayPractice() {
@@ -58,14 +50,8 @@ export default function AIRolePlayPractice() {
   
   // UI state
   const [showSetup, setShowSetup] = useState(true);
-  const [showCoaching, setShowCoaching] = useState(true);
   const [ttsEnabled, setTtsEnabled] = useState(true);
   const [ttsProvider, setTtsProvider] = useState<'gemini' | 'edge' | 'deepgram'>('gemini'); // Default: Gemini (free, human-like)
-  
-  // AI Provider config
-  const [aiProvider, setAiProvider] = useState<'ollama' | 'mock'>('mock');
-  const [ollamaUrl, setOllamaUrl] = useState('http://80.241.218.108:11434');
-  const [ollamaModel, setOllamaModel] = useState('llama3.1:8b');
     
   // Performance tracking
   const [sessionMetrics, setSessionMetrics] = useState<{
@@ -87,7 +73,12 @@ export default function AIRolePlayPractice() {
       const companyPersonas = getPersonasForCompany(selectedCompany);
       setPersonas(companyPersonas);
       setSelectedPersona(null);
-      setShowSetup(false);
+      setMessages([]);
+      setContext(null);
+      setSessionMetrics(null);
+      setIsSessionActive(false);
+      setCurrentMessage('');
+      setShowSetup(true);
     }
   }, [selectedCompany]);
 
@@ -213,12 +204,11 @@ export default function AIRolePlayPractice() {
 
   // Start session with selected persona
   const startSession = async (persona: B2BPersona) => {
-    const sessionId = `b2b-session-${Date.now()}`;
-    
     // Generate initial greeting based on persona
     const initialGreeting = generatePersonaGreeting(persona);
     
     const initialMessage: AIMessage = {
+      id: `prospect-${Date.now()}`,
       role: 'prospect',
       content: initialGreeting,
       timestamp: Date.now(),
@@ -256,21 +246,21 @@ export default function AIRolePlayPractice() {
       case 'hr-manager':
         return `Hello, this is ${persona.name}, Operations Manager at ${companyName}. We're currently using Excel for everything and it's costing us AED 40k monthly in errors. I have 14 days to fix our recruitment system before the peak season. What can you do?`;
       
-      case 'hr-business-owner':
-        return `Hi, I'm ${persona.name} at ${companyName}. We're a 13-person team trying to compete with larger consultancies. I've heard about AI in recruitment but I'm worried about team adoption. Show me how your system works.`;
-      
-      case 'hr-finance-decider':
-        return `This is ${persona.name} from ${companyName}. Before we discuss anything, I need to see your ROI calculator. Our budget is ${persona.budget}, but I need 90-day payment terms and a money-back guarantee. What's the total cost?`;
-      
-      case 'tech-it-manager':
-        return `Hey, ${persona.name} here, IT Manager at ${companyName}. I've evaluated 20+ AI solutions and most can't handle production workloads. Show me your API documentation and tell me about Kubernetes integration. I need enterprise-grade reliability.`;
-      
-      case 'tech-business-owner':
+      case 'business-owner':
+        if (persona.company === 'eiger-marvel-hr') {
+          return `Hi, I'm ${persona.name} at ${companyName}. We're a 13-person team trying to compete with larger consultancies. I've heard about AI in recruitment but I'm worried about team adoption. Show me how your system works.`;
+        }
         return `This is ${persona.name}, CEO of ${companyName}. We're stuck at AED 1.5M revenue and our competitors are already offering AI. I need to scale to AED 5M in 2 years. How fast can you deploy? What's your competitive advantage?`;
-      
-      case 'tech-operations':
+
+      case 'finance-decider':
+        return `This is ${persona.name} from ${companyName}. Before we discuss anything, I need to see your ROI calculator. Our budget is ${persona.budget}, but I need 90-day payment terms and a money-back guarantee. What's the total cost?`;
+
+      case 'it-manager':
+        return `Hey, ${persona.name} here, IT Manager at ${companyName}. I've evaluated 20+ AI solutions and most can't handle production workloads. Show me your API documentation and tell me about Kubernetes integration. I need enterprise-grade reliability.`;
+
+      case 'operations-manager':
         return `Hi, ${persona.name}, Head of Operations at ${companyName}. Our project delivery takes 3-6 months because everything is custom. I want a pilot program first - show me how your AI tools can standardize our delivery and reduce time to 6-8 weeks.`;
-      
+
       default:
         return `Hello, this is ${persona.name} from ${companyName}. Tell me about your solution.`;
     }
@@ -285,6 +275,7 @@ export default function AIRolePlayPractice() {
 
     // Add user message
     const userMessage: AIMessage = {
+      id: `user-${Date.now()}`,
       role: 'user',
       content: currentMessage,
       timestamp: Date.now()
@@ -308,6 +299,7 @@ export default function AIRolePlayPractice() {
 
       // Add prospect response
       const prospectMessage: AIMessage = {
+        id: `prospect-${Date.now()}-${updatedMessages.length}`,
         role: 'prospect',
         content: response,
         timestamp: Date.now(),
@@ -320,7 +312,7 @@ export default function AIRolePlayPractice() {
       // Update context
       setContext({
         ...context,
-        messages: finalMessages as any
+        messages: finalMessages
       });
 
       // Speak the response

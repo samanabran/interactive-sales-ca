@@ -21,7 +21,6 @@ import { CallRecord, ProspectInfo, CallObjective, QualificationStatus } from '@/
 import { scholarixScript, determineOutcome } from '@/lib/scholarixScript';
 import { calculateMetrics } from '@/lib/callUtils';
 import { useMobileRecorder } from '@/hooks/useMobileRecorder';
-import { voicePlayer } from '@/lib/voicePlayer';
 import { transcriptionService } from '@/lib/transcriptionService';
 
 export default function CallApp() {
@@ -153,7 +152,7 @@ export default function CallApp() {
     setActiveCall(newCall);
     setShowPreCallSetup(false);
     setActiveTab('call');
-    setTranscription(null);
+    setTranscriptionResult(null);
     
     // Start mobile recording with detailed logging
     console.log('Attempting to start mobile recording...');
@@ -163,32 +162,6 @@ export default function CallApp() {
     }).catch(error => {
       console.error('❌ Recording start error:', error);
       toast('🎙 Call started without recording', {
-        duration: 3000,
-      });
-    });
-  };
-    
-    setActiveCall(newCall);
-    setShowPreCallSetup(false);
-    setActiveTab('call');
-    
-    // Start recording with detailed logging
-    console.log('Attempting to start audio recording...');
-    audioRecorder.startRecording().then(success => {
-      console.log('Recording start result:', success);
-      if (success) {
-        console.log('✅ Audio recording started successfully');
-        toast.success('📞 Call started with audio recording!');
-      } else {
-        console.warn('⚠️ Recording failed to start');
-        toast('📞 Call started (recording unavailable - check microphone permissions)', {
-          duration: 4000,
-        });
-      }
-    }).catch(error => {
-      console.error('❌ Recording start error:', error);
-      console.error('Error details:', error.message, error.name);
-      toast('📞 Call started without recording', {
         duration: 3000,
       });
     });
@@ -288,7 +261,7 @@ export default function CallApp() {
           language: 'en',
           prompt: 'This is a B2B sales call for EIGER MARVEL HR or SGC TECH AI. Include business terminology.'
         });
-        setTranscription(result.text);
+        setTranscriptionResult(result.text);
         toast.success('📝 Transcription complete!');
       } catch (error) {
         console.error('Transcription failed:', error);
@@ -297,11 +270,6 @@ export default function CallApp() {
         setIsTranscribing(false);
       }
     }
-  };
-
-    setCompletedCall(callRecord);
-    setShowPostCallSummary(true);
-    setActiveCall(null);
   };
 
   const saveCallSummary = async (notes: string) => {
@@ -374,7 +342,6 @@ export default function CallApp() {
       // Upload recording if available
       let recordingUrl = updatedCall.recordingUrl;
       const recordingBlob = (window as any).__pendingRecordingBlob;
-      const recordingType = (window as any).__pendingRecordingType || 'audio/webm';
       
       if (recordingBlob) {
         try {
@@ -468,7 +435,7 @@ export default function CallApp() {
     const scores = Object.values(qualification).map(val => 
       val === true ? 1 : val === false ? 0 : 0.5
     );
-    const sum = scores.reduce((a, b) => a + b, 0);
+    const sum = scores.reduce<number>((a, b) => a + b, 0);
     return Math.round((sum / scores.length) * 100);
   };
 
@@ -480,13 +447,13 @@ export default function CallApp() {
         toast.info('Recording stopped');
       });
     } else {
-      audioRecorder.startRecording().then(success => {
-        if (success) {
+      audioRecorder.startRecording()
+        .then(() => {
           toast.info('Recording started');
-        } else {
+        })
+        .catch(() => {
           toast.error('Failed to start recording');
-        }
-      });
+        });
     }
   };
 
@@ -643,10 +610,10 @@ export default function CallApp() {
                 </div>
 
                 {/* Transcription Display */}
-                {transcription && (
+                {transcriptionResult && (
                   <div className="mt-4 p-4 bg-green-50 rounded-xl border-2 border-green-200">
                     <h3 className="text-sm font-bold text-green-900 mb-2">📝 Transcription</h3>
-                    <p className="text-sm text-green-800 leading-relaxed">{transcription}</p>
+                    <p className="text-sm text-green-800 leading-relaxed">{transcriptionResult}</p>
                   </div>
                 )}
 

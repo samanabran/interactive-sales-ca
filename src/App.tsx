@@ -1,5 +1,6 @@
 // Main application with routing and authentication using Clerk
 import { useState, lazy, Suspense } from 'react';
+import { CompanyProvider } from '@/contexts/CompanyContext';
 import { 
   SignedIn, 
   SignedOut, 
@@ -293,9 +294,6 @@ function ProtectedLayout() {
     </div>
   );
 }
-
-// Main App component
-import { CompanyProvider } from '@/contexts/CompanyContext';
 
 export default function App() {
   return (

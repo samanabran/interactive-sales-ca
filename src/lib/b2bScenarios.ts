@@ -3,7 +3,8 @@
  * Realistic sales scenarios for training
  */
 
-import type { CompanyType, B2BPersonaType } from './aiRolePlayService';
+import type { CompanyType } from './companySelector';
+import type { B2BPersonaType } from './b2bPersonas';
 
 export interface B2BScenario {
   id: string;
@@ -51,7 +52,7 @@ export const EIGER_MARVEL_HR_SCENARIOS: B2BScenario[] = [
     id: 'em-hr-payroll-compliance',
     company: 'eiger-marvel-hr',
     title: 'Payroll + WPS Compliance Demo',
-    personaType: 'hr-finance-decider', // Katherine
+    personaType: 'finance-decider', // Katherine
     difficulty: 'hard',
     description: 'Convince Finance Manager to automate payroll with WPS compliance to avoid penalties',
     objectives: [
@@ -74,7 +75,7 @@ export const EIGER_MARVEL_HR_SCENARIOS: B2BScenario[] = [
     id: 'em-hr-modernization',
     company: 'eiger-marvel-hr',
     title: 'AI-Powered Recruitment Modernization',
-    personaType: 'hr-business-owner', // Hania Khan
+    personaType: 'business-owner', // Hania Khan
     difficulty: 'easy',
     description: 'Show young HR team how AI can screen candidates faster and modernize their consultancy',
     objectives: [
@@ -127,7 +128,7 @@ export const SGC_TECH_AI_SCENARIOS: B2BScenario[] = [
     id: 'sgc-ai-customer-support',
     company: 'sgc-tech-ai',
     title: 'AI Customer Support Automation',
-    personaType: 'tech-it-manager', // Technical Director
+    personaType: 'it-manager', // Technical Director
     difficulty: 'hard',
     description: 'Pitch AI-powered customer support automation to IT Manager handling 20+ client projects',
     objectives: [
@@ -150,7 +151,7 @@ export const SGC_TECH_AI_SCENARIOS: B2BScenario[] = [
     id: 'sgc-ai-enterprise-deals',
     company: 'sgc-tech-ai',
     title: 'Winning Enterprise Deals with AI',
-    personaType: 'tech-business-owner', // CEO/Founder
+    personaType: 'business-owner', // CEO/Founder
     difficulty: 'medium',
     description: 'Convince CEO to use AI solutions to win enterprise clients and scale from AED 1.5M to AED 5M revenue',
     objectives: [
@@ -173,7 +174,7 @@ export const SGC_TECH_AI_SCENARIOS: B2BScenario[] = [
     id: 'sgc-ai-cicd-pipeline',
     company: 'sgc-tech-ai',
     title: 'CI/CD Pipeline Automation',
-    personaType: 'tech-it-manager', // Technical Director
+    personaType: 'it-manager', // Technical Director
     difficulty: 'hard',
     description: 'Sell CI/CD automation to IT Manager managing 20+ client projects with manual processes',
     objectives: [
@@ -196,7 +197,7 @@ export const SGC_TECH_AI_SCENARIOS: B2BScenario[] = [
     id: 'sgc-ai-custom-ai-agents',
     company: 'sgc-tech-ai',
     title: 'Custom AI Agent Development',
-    personaType: 'tech-operations', // Head of Operations
+    personaType: 'operations-manager', // Head of Operations
     difficulty: 'medium',
     description: 'Pitch reusable AI components and pilot program to Operations Manager struggling with custom code',
     objectives: [

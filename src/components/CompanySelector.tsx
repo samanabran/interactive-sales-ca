@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { COMPANY_PROFILES, CompanyProfile, CompanyType } from '../lib/companySelector';
 
 interface CompanySelectorProps {

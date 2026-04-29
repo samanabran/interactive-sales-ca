@@ -5,8 +5,6 @@
  * Upload to Contabo for processing
  */
 
-import { geminiTTS } from './geminiTTSService'; // Reusing Gemini API key
-
 export interface TranscriptionResult {
   text: string;
   language?: string;

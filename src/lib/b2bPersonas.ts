@@ -1,3 +1,12 @@
+import type { CompanyType } from './companySelector';
+
+export type B2BPersonaType =
+  | 'hr-manager'
+  | 'business-owner'
+  | 'finance-decider'
+  | 'it-manager'
+  | 'operations-manager';
+
 /**
  * B2B Decision-Maker Personas
  * Target Companies: EIGER MARVEL HR & SGC TECH AI
@@ -6,8 +15,8 @@
 
 export interface B2BPersona {
   id: string;
-  company: 'eiger-marvel-hr' | 'sgc-tech-ai';
-  type: string;
+  company: CompanyType;
+  type: B2BPersonaType;
   name: string;
   title: string;
   companySize: string; // "20-50 employees" etc.
@@ -124,7 +133,7 @@ export const EIGER_MARVEL_HR_PERSONAS: B2BPersona[] = [
     company: 'eiger-marvel-hr',
     type: 'business-owner',
     name: 'Hania Khan',
-    title: 'HR Intern / Future Partner',
+    title: 'Managing Partner',
     companySize: '13 employees',
     industry: 'HR Consultancy & Recruitment',
     location: 'Dubai, UAE',
