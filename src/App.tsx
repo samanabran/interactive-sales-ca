@@ -1,14 +1,6 @@
-// Main application with routing and authentication using Clerk
+// Main application - Zero-cost deployment (Clerk auth removed)
 import { useState, lazy, Suspense } from 'react';
 import { CompanyProvider } from '@/contexts/CompanyContext';
-import { 
-  SignedIn, 
-  SignedOut, 
-  SignInButton, 
-  UserButton, 
-  useUser,
-  RedirectToSignIn
-} from '@clerk/clerk-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,11 +8,10 @@ import { Toaster } from 'sonner';
 import { 
   PhoneCall,
   Users,
-  Shield,
-  User as UserIcon,
-  Books,
+  ChartBar,
   Robot,
-  ChartBar
+  Books,
+  Shield
 } from '@phosphor-icons/react';
 import { CallErrorBoundary, AIErrorBoundary, LeadErrorBoundary, ComponentErrorBoundary } from '@/components/ErrorBoundaries';
 import { QueryProvider } from '@/lib/queryClient';
@@ -66,51 +57,10 @@ function ComponentLoadingFallback() {
   );
 }
 
-// Sign-in page component
-function SignInPage() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <div className="mx-auto h-12 w-12 flex items-center justify-center rounded-full bg-blue-100">
-            <UserIcon className="h-6 w-6 text-blue-600" />
-          </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Welcome to Scholarix CRM
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Sign in to access your sales dashboard
-          </p>
-        </div>
-        <div className="mt-8 space-y-6">
-          <div className="flex justify-center">
-            <SignInButton mode="modal">
-              <Button size="lg" className="w-full">
-                Sign in to continue
-              </Button>
-            </SignInButton>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Main protected layout
-function ProtectedLayout() {
-  const { user, isLoaded } = useUser();
-  const [activeTab, setActiveTab] = useState('calls');
-
-  if (!isLoaded) {
-    return <LoadingSpinner />;
-  }
-
-  if (!user) {
-    return <RedirectToSignIn />;
-  }
-
-  // Get user role from user metadata or default to 'agent'
-  const userRole = user.publicMetadata?.role as string || 'agent';
+// Main layout (no auth required - zero-cost deployment)
+function MainLayout() {
+  const [activeTab, setActiveTab] = useState('roleplay'); // Default to AI RolePlay for B2B voice agents
+  const userRole = 'agent'; // Simplified for zero-cost deployment
 
   const getRoleBadge = (role: string) => (
     <Badge 
@@ -127,51 +77,29 @@ function ProtectedLayout() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Mobile-First Header */}
+      {/* Header */}
       <header className="bg-white border-b border-gray-200 safe-area-top">
         <div className="mobile-container max-w-7xl mx-auto">
           <div className="flex justify-between items-center h-16 sm:h-20">
-            {/* Logo - Always visible */}
+            {/* Logo */}
             <div className="flex items-center">
               <div className="text-lg sm:text-xl font-bold text-blue-600">
                 Scholarix CRM
               </div>
             </div>
 
-            {/* Mobile-optimized header actions */}
+            {/* Header actions */}
             <div className="flex items-center space-x-2 sm:space-x-4">
-              {/* User info - responsive */}
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                {/* User details - hidden on very small screens */}
-                <div className="hidden sm:block">
-                  <div className="text-sm font-medium text-gray-900 truncate max-w-24 md:max-w-none">
-                    {user.fullName || user.firstName || 'User'}
-                  </div>
-                  <div className="text-xs text-gray-500 truncate max-w-24 md:max-w-none">
-                    {user.primaryEmailAddress?.emailAddress}
-                  </div>
-                </div>
-                
-                {/* Role badge - smaller on mobile */}
-                <div className="hidden xs:block">
-                  {getRoleBadge(userRole)}
-                </div>
-
-                {/* Clerk User Button - handles user menu and logout */}
-                <UserButton 
-                  appearance={{
-                    elements: {
-                      avatarBox: "h-8 w-8 sm:h-10 sm:w-10"
-                    }
-                  }}
-                />
+              {/* Role badge */}
+              <div className="hidden xs:block">
+                {getRoleBadge(userRole)}
               </div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Navigation Tabs - Mobile Responsive */}
+      {/* Navigation Tabs */}
       <div className="bg-white border-b border-gray-200">
         <div className="mobile-container max-w-7xl mx-auto">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -219,15 +147,13 @@ function ProtectedLayout() {
                 <span className="sm:hidden">Script</span>
               </TabsTrigger>
               
-              {(userRole === 'admin' || userRole === 'manager') && (
-                <TabsTrigger 
-                  value="admin" 
-                  className="flex items-center justify-center space-x-1 sm:space-x-2 h-full text-xs sm:text-sm touch-target data-[state=active]:bg-purple-50 data-[state=active]:text-purple-600 data-[state=active]:border-b-2 data-[state=active]:border-purple-600"
-                >
-                  <Shield className="h-4 w-4 sm:h-5 sm:w-5" />
-                  <span>Admin</span>
-                </TabsTrigger>
-              )}
+              <TabsTrigger 
+                value="admin" 
+                className="flex items-center justify-center space-x-1 sm:space-x-2 h-full text-xs sm:text-sm touch-target data-[state=active]:bg-purple-50 data-[state=active]:text-purple-600 data-[state=active]:border-b-2 data-[state=active]:border-purple-600"
+              >
+                <Shield className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span>Admin</span>
+              </TabsTrigger>
             </TabsList>
 
             {/* Tab Content */}
@@ -272,13 +198,11 @@ function ProtectedLayout() {
                 </AIErrorBoundary>
               </TabsContent>
               
-              {(userRole === 'admin' || userRole === 'manager') && (
-                <TabsContent value="admin" className="mt-0 h-full">
-                  <Suspense fallback={<ComponentLoadingFallback />}>
-                    <AdminPanel />
-                  </Suspense>
-                </TabsContent>
-              )}
+              <TabsContent value="admin" className="mt-0 h-full">
+                <Suspense fallback={<ComponentLoadingFallback />}>
+                  <AdminPanel />
+                </Suspense>
+              </TabsContent>
             </div>
           </Tabs>
         </div>
@@ -297,15 +221,13 @@ function ProtectedLayout() {
 
 export default function App() {
   return (
-    <QueryProvider>
-      <CompanyProvider>
-        <SignedOut>
-          <SignInPage />
-        </SignedOut>
-        <SignedIn>
-          <ProtectedLayout />
-        </SignedIn>
-      </CompanyProvider>
-    </QueryProvider>
+    <CompanyProvider>
+      <QueryProvider>
+        <Toaster />
+        <Suspense fallback={<LoadingSpinner />}>
+          <MainLayout />
+        </Suspense>
+      </QueryProvider>
+    </CompanyProvider>
   );
 }
