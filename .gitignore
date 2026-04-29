@@ -33,3 +33,6 @@ pids
 .devcontainer/
 
 .spark-workbench-id
+
+# Git worktrees
+.worktrees/
