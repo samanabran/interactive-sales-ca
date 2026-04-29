@@ -295,15 +295,19 @@ function ProtectedLayout() {
 }
 
 // Main App component
+import { CompanyProvider } from '@/contexts/CompanyContext';
+
 export default function App() {
   return (
     <QueryProvider>
-      <SignedOut>
-        <SignInPage />
-      </SignedOut>
-      <SignedIn>
-        <ProtectedLayout />
-      </SignedIn>
+      <CompanyProvider>
+        <SignedOut>
+          <SignInPage />
+        </SignedOut>
+        <SignedIn>
+          <ProtectedLayout />
+        </SignedIn>
+      </CompanyProvider>
     </QueryProvider>
   );
 }

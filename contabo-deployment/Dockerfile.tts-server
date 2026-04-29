@@ -1,0 +1,24 @@
+# TTS Server - Microsoft Edge TTS (Free, No API Key)
+# Provides 200+ voices for AI role-play scenarios
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    espeak-ng \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY tts_server.py .
+
+# Expose port
+EXPOSE 5050
+
+# Run the server
+CMD ["uvicorn", "tts_server:app", "--host", "0.0.0.0", "--port", "5050", "--reload"]

@@ -20,14 +20,17 @@ import InlineObjectionHandler from '@/components/InlineObjectionHandler';
 import { CallRecord, ProspectInfo, CallObjective, QualificationStatus } from '@/lib/types';
 import { scholarixScript, determineOutcome } from '@/lib/scholarixScript';
 import { calculateMetrics } from '@/lib/callUtils';
-import { useAudioRecorder } from '@/hooks/useAudioRecorder';
-import { audioRecordingManager } from '@/lib/audioRecordingManager';
+import { useMobileRecorder } from '@/hooks/useMobileRecorder';
+import { voicePlayer } from '@/lib/voicePlayer';
+import { transcriptionService } from '@/lib/transcriptionService';
 
 export default function CallApp() {
   const [callHistory, setCallHistory] = useLocalStorage<CallRecord[]>('scholarix-call-history', []);
   const { user } = useUser();
   const { getToken } = useAuth();
-  const audioRecorder = useAudioRecorder();
+  const audioRecorder = useMobileRecorder();
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [transcriptionResult, setTranscriptionResult] = useState<string | null>(null);
   
   const [showPreCallSetup, setShowPreCallSetup] = useState(false);
   const [activeCall, setActiveCall] = useState<{
@@ -150,6 +153,24 @@ export default function CallApp() {
     setActiveCall(newCall);
     setShowPreCallSetup(false);
     setActiveTab('call');
+    setTranscription(null);
+    
+    // Start mobile recording with detailed logging
+    console.log('Attempting to start mobile recording...');
+    audioRecorder.startRecording().then(() => {
+      console.log('✅ Mobile recording started successfully');
+      toast.success('🎙 Call started with mobile recording!');
+    }).catch(error => {
+      console.error('❌ Recording start error:', error);
+      toast('🎙 Call started without recording', {
+        duration: 3000,
+      });
+    });
+  };
+    
+    setActiveCall(newCall);
+    setShowPreCallSetup(false);
+    setActiveTab('call');
     
     // Start recording with detailed logging
     console.log('Attempting to start audio recording...');
@@ -217,38 +238,23 @@ export default function CallApp() {
 
     let recordingUrl: string | undefined;
     let recordingDuration: number | undefined;
+    let recordingBlob: Blob | null = null;
 
     if (audioRecorder.isRecording) {
       try {
-        const recording = await audioRecorder.stopRecording();
+        const blob = await audioRecorder.stopRecording();
+        
+        if (blob) {
+          recordingBlob = blob;
+          recordingUrl = audioRecorder.audioUrl || undefined;
+          recordingDuration = audioRecorder.duration;
 
-        // Create enhanced recording data with the actual blob
-        const recordingData = audioRecordingManager.createRecordingData(
-          recording.blob,
-          recording.duration,
-          activeCall.prospectInfo.name
-        );
+          // Save blob for upload
+          (window as any).__pendingRecordingBlob = blob;
+          (window as any).__pendingRecordingType = blob.type;
 
-        // Store the blob for later upload to backend
-        recordingUrl = recording.url;
-        recordingDuration = recording.duration;
-
-        // Save blob to state for upload when saving call
-        // We'll store it temporarily with the call record
-        (window as any).__pendingRecordingBlob = recording.blob;
-        (window as any).__pendingRecordingType = recording.blob.type;
-
-        // Save recording to IndexedDB for playback
-        await audioRecordingManager.saveRecording(
-          recordingData,
-          activeCall.id,
-          activeCall.prospectInfo.name
-        );
-
-        // Handle auto-download
-        audioRecordingManager.handleAutoDownload(recordingData);
-
-        toast.success(`📼 Recording saved! Duration: ${Math.floor(recording.duration)}s`);
+          toast.success(`🎼 Recording saved! Duration: ${Math.floor(audioRecorder.duration)}s`);
+        }
       } catch (error) {
         console.error('Failed to save recording:', error);
         toast.error('Failed to save audio recording');
@@ -269,6 +275,29 @@ export default function CallApp() {
       recordingUrl,
       recordingDuration
     };
+
+    setCompletedCall(callRecord);
+    setShowPostCallSummary(true);
+    setActiveCall(null);
+
+    // Auto-transcribe if we have a recording
+    if (recordingBlob) {
+      setIsTranscribing(true);
+      try {
+        const result = await transcriptionService.transcribe(recordingBlob, {
+          language: 'en',
+          prompt: 'This is a B2B sales call for EIGER MARVEL HR or SGC TECH AI. Include business terminology.'
+        });
+        setTranscription(result.text);
+        toast.success('📝 Transcription complete!');
+      } catch (error) {
+        console.error('Transcription failed:', error);
+        toast.error('Transcription failed - recording saved locally');
+      } finally {
+        setIsTranscribing(false);
+      }
+    }
+  };
 
     setCompletedCall(callRecord);
     setShowPostCallSummary(true);
@@ -596,7 +625,7 @@ export default function CallApp() {
                   </div>
                 </div>
 
-                {/* In-call utilities - Notes and Objection Handler */}
+                {/* In-call utilities - Notes, Objection Handler, Transcription */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {/* In-call notes */}
                   <InCallNotes
@@ -612,6 +641,24 @@ export default function CallApp() {
                     compact={false}
                   />
                 </div>
+
+                {/* Transcription Display */}
+                {transcription && (
+                  <div className="mt-4 p-4 bg-green-50 rounded-xl border-2 border-green-200">
+                    <h3 className="text-sm font-bold text-green-900 mb-2">📝 Transcription</h3>
+                    <p className="text-sm text-green-800 leading-relaxed">{transcription}</p>
+                  </div>
+                )}
+
+                {/* Transcription Loading */}
+                {isTranscribing && (
+                  <div className="mt-4 p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      <span className="text-sm text-blue-800">Transcribing recording with Gemini AI...</span>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="text-center py-12 sm:py-16 lg:py-20 px-4">
