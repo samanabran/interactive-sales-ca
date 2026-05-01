@@ -400,55 +400,55 @@ export default function AIRolePlayPractice() {
   // Difficulty color helper
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
-      case 'easy': return 'bg-green-500';
-      case 'medium': return 'bg-yellow-500';
-      case 'hard': return 'bg-red-500';
-      default: return 'bg-gray-500';
+      case 'easy': return 'bg-success';
+      case 'medium': return 'bg-warning';
+      case 'hard': return 'bg-destructive';
+      default: return 'bg-muted';
     }
   };
 
   // ========== RENDER: Company Not Selected ==========
   if (!selectedCompany) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4 md:p-6">
-        <div className="max-w-4xl mx-auto space-y-6 pt-8">
+      <div className="min-h-screen bg-sgc-bg-mesh p-4 md:p-6">
+        <div className="max-w-4xl mx-auto space-y-6 pt-8 sgc-stagger">
           <div className="text-center space-y-3">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
-              <Building className="h-8 w-8 text-white" weight="fill" />
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-full mb-4 sgc-ai-glow">
+              <Building className="h-8 w-8 text-primary-foreground" weight="fill" />
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              B2B Sales Training
+            <h1 className="text-3xl md:text-4xl font-bold sgc-gradient-text">
+              SGC TECH AI — Voice Agent Training
             </h1>
-            <p className="text-base md:text-lg text-gray-800 font-semibold max-w-md mx-auto">
-              Select your company to practice sales conversations with real decision-makers
+            <p className="text-base md:text-lg text-foreground font-semibold max-w-md mx-auto">
+              Practice B2B sales conversations with AI-powered decision-makers
             </p>
           </div>
 
-          <Card className="shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-xl">Choose Training Company</CardTitle>
-              <CardDescription>
-                Practice B2B sales with EIGER MARVEL HR or SGC TECH AI personas
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {COMPANY_PROFILES.map((company) => (
-                <div
-                  key={company.id}
-                  onClick={() => setSelectedCompany(company.id)}
-                  className="cursor-pointer p-6 border-2 rounded-xl hover:border-blue-500 hover:shadow-lg transition-all duration-200 bg-white"
-                >
-                  <div className="flex items-start gap-4">
-                    <div 
-                      className="text-5xl p-3 rounded-xl"
-                      style={{ backgroundColor: `${company.color}20` }}
+              <Card className="shadow-lg sgc-glass">
+                <CardHeader>
+                  <CardTitle className="text-xl text-foreground">Choose Training Company</CardTitle>
+                  <CardDescription className="text-muted-foreground">
+                    Practice B2B sales with EIGER MARVEL HR or SGC TECH AI personas
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {COMPANY_PROFILES.map((company) => (
+                    <div
+                      key={company.id}
+                      onClick={() => setSelectedCompany(company.id)}
+                      className="cursor-pointer p-6 border-2 rounded-xl hover:border-primary hover:shadow-lg transition-all duration-200 bg-card"
                     >
-                      {company.icon}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-gray-900">{company.name}</h3>
-                      <p className="text-sm text-gray-600 mt-1">{company.domain}</p>
-                      <p className="text-sm text-gray-700 mt-2">{company.description}</p>
+                      <div className="flex items-start gap-4">
+                        <div 
+                          className="text-5xl p-3 rounded-xl"
+                          style={{ backgroundColor: `var(--primary)20` }}
+                        >
+                          {company.icon}
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-xl font-bold text-foreground">{company.name}</h3>
+                          <p className="text-sm text-muted-foreground mt-1">{company.domain}</p>
+                          <p className="text-sm text-muted-foreground mt-2">{company.description}</p>
                       <div className="flex flex-wrap gap-2 mt-3">
                         {company.solutions.slice(0, 3).map((solution, idx) => (
                           <Badge key={idx} variant="secondary" className="text-xs">
@@ -472,42 +472,42 @@ export default function AIRolePlayPractice() {
     const companyProfile = COMPANY_PROFILES.find(c => c.id === selectedCompany);
     
     return (
-      <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+      <div className="min-h-screen bg-background p-4 md:p-6">
         <div className="max-w-7xl mx-auto space-y-6">
-          <div className="flex items-center gap-4 bg-white p-4 rounded-xl shadow-sm border-2">
+          <div className="flex items-center gap-4 bg-card p-4 rounded-xl shadow-sm border-2 border-border">
             <Button variant="outline" onClick={handleBackToCompany} className="shrink-0">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Change Company
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-foreground">
                 {companyProfile?.icon} {companyProfile?.name} - Select Persona
               </h1>
-              <p className="text-sm text-gray-700 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 Choose a B2B decision-maker to practice your sales conversation
               </p>
             </div>
           </div>
 
           {/* Voice Settings */}
-          <Card className="shadow-lg">
+          <Card className="shadow-lg sgc-glass">
             <CardHeader>
-              <CardTitle className="text-lg">Voice Agent Settings</CardTitle>
-              <CardDescription>
+              <CardTitle className="text-lg text-foreground">Voice Agent Settings</CardTitle>
+              <CardDescription className="text-muted-foreground">
                 Choose TTS provider: Gemini (FREE), Edge (FREE), or Deepgram (Aura-2, $200 free credit)
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl border-2 border-blue-100">
+              <div className="flex items-center justify-between p-4 bg-primary/5 rounded-xl border-2 border-primary/20">
                 <div className="flex items-center gap-3">
                   {ttsEnabled ? (
-                    <SpeakerHigh className="h-6 w-6 text-blue-600" weight="fill" />
+                    <SpeakerHigh className="h-6 w-6 text-primary" weight="fill" />
                   ) : (
-                    <SpeakerSlash className="h-6 w-6 text-gray-400" />
+                    <SpeakerSlash className="h-6 w-6 text-muted-foreground" />
                   )}
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">Realistic Voice Agents</p>
-                    <p className="text-xs text-gray-700">
+                    <p className="text-sm font-semibold text-foreground">Realistic Voice Agents</p>
+                    <p className="text-xs text-muted-foreground">
                       {ttsProvider === 'gemini' && 'Gemini 3.1 Flash TTS (FREE, 30+ voices)'}
                       {ttsProvider === 'edge' && 'Edge TTS (FREE unlimited, 200+ voices)'}
                       {ttsProvider === 'deepgram' && 'Deepgram Aura-2 (FREE $200 credit, 40+ voices)'}
@@ -572,14 +572,14 @@ export default function AIRolePlayPractice() {
               return (
                 <Card 
                   key={persona.id}
-                  className="cursor-pointer hover:shadow-xl hover:scale-[1.02] transition-all duration-200 bg-white border-2 hover:border-blue-500"
+                  className="cursor-pointer hover:shadow-xl hover:scale-[1.02] transition-all duration-200 bg-card border-2 hover:border-primary"
                   onClick={() => startSession(persona)}
                 >
                   <CardHeader className="space-y-3">
                     <div className="flex items-start justify-between">
                       <div>
-                        <CardTitle className="text-lg font-bold text-gray-900">{persona.name}</CardTitle>
-                        <CardDescription className="text-sm mt-1 font-semibold">
+                        <CardTitle className="text-lg font-bold text-foreground">{persona.name}</CardTitle>
+                        <CardDescription className="text-sm mt-1 font-semibold text-muted-foreground">
                           {persona.title}
                         </CardDescription>
                       </div>
@@ -589,26 +589,26 @@ export default function AIRolePlayPractice() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <p className="text-sm text-gray-800 font-medium leading-relaxed">{persona.responseStyle}</p>
+                    <p className="text-sm text-foreground font-medium leading-relaxed">{persona.responseStyle}</p>
                     
-                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                      <p className="text-xs font-bold mb-2 text-blue-900">Goals:</p>
+                    <div className="bg-primary/5 p-3 rounded-lg border border-primary/20">
+                      <p className="text-xs font-bold mb-2 text-primary">Goals:</p>
                       <div className="flex flex-wrap gap-1.5">
                         {persona.goals.slice(0, 2).map((goal, idx) => (
-                          <Badge key={idx} className="text-xs font-bold bg-blue-600 text-white">
+                          <Badge key={idx} className="text-xs font-bold bg-primary text-primary-foreground">
                             {goal}
                           </Badge>
                         ))}
                       </div>
                     </div>
 
-                    <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                      <p className="text-xs font-bold text-green-900">Budget: <span className="text-green-700 font-extrabold">{persona.budget}</span></p>
+                    <div className="bg-success/5 p-3 rounded-lg border border-success/20">
+                      <p className="text-xs font-bold text-success">Budget: <span className="text-success font-extrabold">{persona.budget}</span></p>
                     </div>
 
                     {ttsEnabled && (
-                      <div className="pt-2 border-t-2">
-                        <p className="text-xs italic text-gray-700 font-medium">
+                      <div className="pt-2 border-t-2 border-border">
+                        <p className="text-xs italic text-muted-foreground font-medium">
                           🎤 Voice: {voiceAgent.name} ({voiceAgent.gender})
                         </p>
                       </div>
@@ -626,28 +626,28 @@ export default function AIRolePlayPractice() {
   // ========== RENDER: Session Metrics ==========
   if (sessionMetrics) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4 md:p-6">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <Card className="shadow-xl">
+      <div className="min-h-screen bg-sgc-bg-mesh p-4 md:p-6">
+        <div className="max-w-4xl mx-auto space-y-6 sgc-stagger">
+          <Card className="shadow-xl sgc-glass">
             <CardHeader className="text-center space-y-2 pb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500 rounded-full mx-auto mb-2">
-                <CheckCircle className="h-10 w-10 text-white" weight="fill" />
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-success rounded-full mx-auto mb-2 sgc-ai-glow">
+                <CheckCircle className="h-10 w-10 text-success-foreground" weight="fill" />
               </div>
-              <CardTitle className="text-2xl md:text-3xl font-bold text-gray-900">
+              <CardTitle className="text-2xl md:text-3xl font-bold text-foreground">
                 Session Complete! 🎉
               </CardTitle>
-              <CardDescription className="text-base text-gray-800 font-semibold">
-                B2B practice with <span className="font-bold text-blue-700">{selectedPersona?.name}</span> ({selectedPersona?.title})
+              <CardDescription className="text-base text-muted-foreground font-semibold">
+                B2B practice with <span className="font-bold text-primary">{selectedPersona?.name}</span> ({selectedPersona?.title})
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Overall Score */}
-              <div className="text-center p-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200 shadow-md">
-                <p className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">Overall Performance</p>
+              <div className="text-center p-8 bg-primary/5 rounded-2xl border-2 border-primary/20 shadow-md">
+                <p className="text-sm font-bold text-foreground mb-3 uppercase tracking-wide">Overall Performance</p>
                 <p className={`text-6xl md:text-7xl font-bold ${getScoreColor(sessionMetrics.overallScore)} mb-2`}>
                   {Math.round(sessionMetrics.overallScore)}%
                 </p>
-                <p className="text-base text-gray-800 font-semibold">
+                <p className="text-base text-muted-foreground font-semibold">
                   {sessionMetrics.overallScore >= 80 ? '🌟 Excellent!' : 
                    sessionMetrics.overallScore >= 60 ? '👍 Good job!' : 
                    '💪 Keep practicing!'}
@@ -656,25 +656,25 @@ export default function AIRolePlayPractice() {
 
               {/* Detailed Scores */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                <div className="p-4 bg-white rounded-xl border-2 border-blue-200 shadow-sm">
-                  <p className="text-sm font-bold mb-3 text-gray-900">📝 B2B Pitch Quality</p>
+                <div className="p-4 bg-card rounded-xl border-2 border-primary/20 shadow-sm">
+                  <p className="text-sm font-bold mb-3 text-foreground">📝 B2B Pitch Quality</p>
                   <Progress value={sessionMetrics.scriptAdherence} className="h-3 mb-2" />
-                  <p className="text-lg font-bold text-gray-900">{Math.round(sessionMetrics.scriptAdherence)}%</p>
+                  <p className="text-lg font-bold text-foreground">{Math.round(sessionMetrics.scriptAdherence)}%</p>
                 </div>
-                <div className="p-4 bg-white rounded-xl border-2 border-blue-200 shadow-sm">
-                  <p className="text-sm font-bold mb-3 text-gray-900">🛡️ Objection Handling</p>
+                <div className="p-4 bg-card rounded-xl border-2 border-accent/20 shadow-sm">
+                  <p className="text-sm font-bold mb-3 text-foreground">🛡️ Objection Handling</p>
                   <Progress value={sessionMetrics.objectionHandling} className="h-3 mb-2" />
-                  <p className="text-lg font-bold text-gray-900">{Math.round(sessionMetrics.objectionHandling)}%</p>
+                  <p className="text-lg font-bold text-foreground">{Math.round(sessionMetrics.objectionHandling)}%</p>
                 </div>
-                <div className="p-4 bg-white rounded-xl border-2 border-gray-100 shadow-sm">
-                  <p className="text-sm font-semibold mb-3 text-gray-700">🤝 Rapport Building</p>
+                <div className="p-4 bg-card rounded-xl border-2 border-border shadow-sm">
+                  <p className="text-sm font-semibold mb-3 text-muted-foreground">🤝 Rapport Building</p>
                   <Progress value={sessionMetrics.rapport} className="h-3 mb-2" />
-                  <p className="text-lg font-bold text-gray-900">{Math.round(sessionMetrics.rapport)}%</p>
+                  <p className="text-lg font-bold text-foreground">{Math.round(sessionMetrics.rapport)}%</p>
                 </div>
-                <div className="p-4 bg-white rounded-xl border-2 border-gray-100 shadow-sm">
-                  <p className="text-sm font-semibold mb-3 text-gray-700">🎯 B2B Closing</p>
+                <div className="p-4 bg-card rounded-xl border-2 border-border shadow-sm">
+                  <p className="text-sm font-semibold mb-3 text-muted-foreground">🎯 B2B Closing</p>
                   <Progress value={sessionMetrics.closing} className="h-3 mb-2" />
-                  <p className="text-lg font-bold text-gray-900">{Math.round(sessionMetrics.closing)}%</p>
+                  <p className="text-lg font-bold text-foreground">{Math.round(sessionMetrics.closing)}%</p>
                 </div>
               </div>
 
@@ -707,16 +707,16 @@ export default function AIRolePlayPractice() {
 
   // ========== RENDER: Active Session ==========
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="h-screen flex flex-col bg-background">
       {/* Header */}
-      <div className="border-b-2 border-gray-300 bg-white shadow-sm p-3 md:p-4">
+      <div className="border-b-2 border-border bg-card shadow-sm p-3 md:p-4">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between gap-3">
             <div className="flex-1 min-w-0">
-              <h2 className="text-base md:text-lg font-bold truncate text-gray-900">
+              <h2 className="text-base md:text-lg font-bold truncate text-foreground">
                 {selectedPersona?.name} - {selectedPersona?.title}
               </h2>
-              <p className="text-xs md:text-sm text-gray-800 font-semibold truncate">
+              <p className="text-xs md:text-sm text-muted-foreground font-semibold truncate">
                 {selectedCompany === 'eiger-marvel-hr' ? '🇦🇪 EIGER MARVEL HR' : '🤖 SGC TECH AI'} • B2B Decision-Maker
               </p>
             </div>
@@ -764,13 +764,13 @@ export default function AIRolePlayPractice() {
                 <div
                   className={`max-w-[85%] sm:max-w-[75%] md:max-w-[70%] rounded-2xl p-3 md:p-4 shadow-md ${
                     message.role === 'user'
-                      ? 'bg-blue-600 text-white rounded-br-md font-semibold'
-                      : 'bg-white border-2 border-gray-300 rounded-bl-md text-gray-900'
+                      ? 'bg-primary text-primary-foreground rounded-br-md font-semibold'
+                      : 'bg-card border-2 border-border rounded-bl-md text-foreground'
                   }`}
                 >
                   {message.role === 'prospect' && isSpeaking && 
                    message === messages[messages.length - 1] && (
-                    <div className="flex items-center gap-2 mb-2 text-blue-600">
+                    <div className="flex items-center gap-2 mb-2 text-primary">
                       <SpeakerHigh className="h-4 w-4 animate-pulse" weight="fill" />
                       <span className="text-xs font-bold">Speaking...</span>
                     </div>
@@ -784,14 +784,14 @@ export default function AIRolePlayPractice() {
             {isTyping && selectedPersona && (
               <div className="flex justify-start">
                 <div className="max-w-[85%] sm:max-w-[75%] md:max-w-[70%]">
-                  <div className="bg-gray-100 rounded-2xl p-4 border-2 border-gray-200">
+                  <div className="bg-muted rounded-2xl p-4 border-2 border-border">
                     <div className="flex items-center gap-2">
                       <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                       </div>
-                      <span className="text-xs text-gray-600">{selectedPersona.name} is typing...</span>
+                      <span className="text-xs text-muted-foreground">{selectedPersona.name} is typing...</span>
                     </div>
                   </div>
                 </div>
@@ -802,16 +802,16 @@ export default function AIRolePlayPractice() {
           </div>
 
           {/* Input Area */}
-          <div className="border-t bg-white shadow-lg p-3 md:p-4">
+          <div className="border-t bg-card shadow-lg p-3 md:p-4">
             <div className="max-w-4xl mx-auto flex gap-2">
               <Button
                 variant="outline"
                 size="icon"
                 onClick={toggleListening}
-                className={`shrink-0 h-10 w-10 md:h-11 md:w-11 ${isListening ? 'bg-red-50 border-red-300' : ''}`}
+                className={`shrink-0 h-10 w-10 md:h-11 md:w-11 ${isListening ? 'bg-destructive/10 border-destructive/30' : ''}`}
               >
                 {isListening ? (
-                  <MicrophoneSlash className="h-5 w-5 text-red-600" weight="fill" />
+                  <MicrophoneSlash className="h-5 w-5 text-destructive" weight="fill" />
                 ) : (
                   <Microphone className="h-5 w-5" />
                 )}
@@ -822,13 +822,13 @@ export default function AIRolePlayPractice() {
                 onChange={(e) => setCurrentMessage(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                 placeholder="Type your B2B sales response..."
-                className="flex-1 px-3 md:px-4 py-2 md:py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm md:text-base transition-all"
+                className="flex-1 px-3 md:px-4 py-2 md:py-3 border-2 border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm md:text-base transition-all"
                 disabled={isProcessing}
               />
               <Button
                 onClick={sendMessage}
                 disabled={!currentMessage.trim() || isProcessing}
-                className="shrink-0 h-10 md:h-11 px-4 md:px-6 bg-blue-600 hover:bg-blue-700"
+                className="shrink-0 h-10 md:h-11 px-4 md:px-6 sgc-btn-shine"
               >
                 {isProcessing ? '...' : 'Send'}
               </Button>

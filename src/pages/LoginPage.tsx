@@ -52,28 +52,28 @@ export default function LoginPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 to-indigo-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
-        </div>
+    <div className="min-h-screen flex items-center justify-center bg-sgc-bg-mesh">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+        <p className="text-muted-foreground">Loading...</p>
       </div>
+    </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen flex items-center justify-center bg-sgc-bg-mesh">
       <div className="w-full max-w-md px-4">
-        <Card className="shadow-xl border-0">
+        <Card className="shadow-xl border-0 sgc-glass">
           <CardHeader className="text-center pb-6">
-            <div className="mx-auto mb-4 w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
-              <User className="h-8 w-8 text-white" />
+            <div className="mx-auto mb-4 w-16 h-16 bg-primary rounded-full flex items-center justify-center sgc-ai-glow">
+              <User className="h-8 w-8 text-primary-foreground" />
             </div>
-            <CardTitle className="text-2xl font-bold text-gray-900">
-              Welcome to Scholarix CRM
+            <CardTitle className="text-2xl font-bold text-foreground">
+              SGC TECH AI
             </CardTitle>
-            <p className="text-gray-600 mt-2">
-              Sign in to access your sales dashboard
+            <p className="text-muted-foreground mt-2">
+              Voice Agent Platform
             </p>
           </CardHeader>
 
@@ -86,11 +86,11 @@ export default function LoginPage() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                  Email Address
-                </Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Label htmlFor="email" className="text-sm font-medium text-foreground">
+                Email Address
+              </Label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="email"
                     name="email"
@@ -106,28 +106,28 @@ export default function LoginPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                  Password
-                </Label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    id="password"
-                    name="password"
-                    type={showPassword ? "text" : "password"}
-                    required
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    placeholder="Enter your password"
-                    className="pl-10 pr-10 h-11"
-                    disabled={isSubmitting}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    disabled={isSubmitting}
-                  >
+              <Label htmlFor="password" className="text-sm font-medium text-foreground">
+                Password
+              </Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  required
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  placeholder="Enter your password"
+                  className="pl-10 pr-10 h-11"
+                  disabled={isSubmitting}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  disabled={isSubmitting}
+                >
                     {showPassword ? (
                       <EyeSlash className="h-4 w-4" />
                     ) : (
@@ -137,11 +137,11 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <Button
-                type="submit"
-                className="w-full h-11 bg-blue-600 hover:bg-blue-700"
-                disabled={!isFormValid || isSubmitting}
-              >
+            <Button
+              type="submit"
+              className="w-full h-11 sgc-btn-shine"
+              disabled={!isFormValid || isSubmitting}
+            >
                 {isSubmitting ? (
                   <div className="flex items-center">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
@@ -156,28 +156,17 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <p className="text-xs text-gray-500 text-center">
-                Forgot your password? Contact your administrator.
-              </p>
-            </div>
-
-            {/* Demo credentials for testing */}
-            <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-              <p className="text-xs text-yellow-800 font-medium mb-1">Demo Credentials:</p>
-              <p className="text-xs text-yellow-700">
-                Admin: admin@scholarixglobal.com / admin123
-              </p>
-              <p className="text-xs text-yellow-600 mt-1">
-                (Change default password after first login)
+            <div className="mt-6 pt-4 border-t border-border">
+              <p className="text-xs text-muted-foreground text-center">
+                SGC TECH AI Voice Agent Platform
               </p>
             </div>
           </CardContent>
         </Card>
-
+        
         <div className="text-center mt-6">
-          <p className="text-xs text-gray-500">
-            © 2024 Scholarix Global. All rights reserved.
+          <p className="text-xs text-muted-foreground">
+            © 2026 SGC TECH AI. All rights reserved.
           </p>
         </div>
       </div>
