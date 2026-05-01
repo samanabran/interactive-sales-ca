@@ -43,11 +43,8 @@ recordingRoutes.post('/upload', async (c) => {
     // Upload to R2 - R2.put only takes key and value
     await c.env.RECORDINGS.put(filename, arrayBuffer);
 
-    // Generate public URL (or signed URL depending on your security needs)
-    // For now, we'll use the R2 dev URL format
-    const accountId = '5ca87478e09d6ebc6954f770ac4656e8'; // From your Cloudflare account
-    const bucketName = 'scholarix-recordings';
-    const recordingUrl = `https://${bucketName}.${accountId}.r2.cloudflarestorage.com/${filename}`;
+    // Use route-based URL instead of direct R2 URL (enforces RBAC on playback)
+    const recordingUrl = `/api/recordings/${filename.replace('recordings/', '')}`;
 
     console.log('Recording uploaded successfully:', filename);
 
@@ -136,7 +133,7 @@ recordingRoutes.delete('/:filename{.+}', async (c) => {
     }
 
     // Delete from R2
-    await c.env.RECORDINGS.put(`recordings/${filename}`, null); // R2 uses put(key, null) to delete
+    await c.env.RECORDINGS.delete(`recordings/${filename}`);
 
     console.log('Recording deleted:', filename);
 

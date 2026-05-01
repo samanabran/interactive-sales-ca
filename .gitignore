@@ -36,3 +36,6 @@ pids
 
 # Git worktrees
 .worktrees/
+
+# Compiled JS build artifacts alongside TypeScript source files
+src/**/*.js

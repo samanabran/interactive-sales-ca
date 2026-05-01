@@ -428,6 +428,7 @@ export interface Env {
   CLERK_SECRET_KEY: string;
   CLERK_PUBLISHABLE_KEY: string;
   OPENAI_API_KEY: string;
+  CF_ACCOUNT_ID: string;
   ENVIRONMENT: string;
 }
 
