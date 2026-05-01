@@ -19,6 +19,7 @@ import { QueryProvider } from '@/lib/queryClient';
 const RolePlayPage = lazy(() => import('@/pages/RolePlayPage'));
 const CallApp = lazy(() => import('@/components/CallApp'));
 const LeadManager = lazy(() => import('@/components/LeadManager'));
+const AnalyticsPage = lazy(() => import('@/pages/AnalyticsPage'));
 
 // Loading fallback
 function LoadingSpinner() {
@@ -118,7 +119,7 @@ function MainLayout() {
         <div className="bg-card border-b border-border">
           <div className="mobile-container max-w-7xl mx-auto">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3 h-12 sm:h-14 bg-transparent p-0">
+              <TabsList className="grid w-full grid-cols-4 h-12 sm:h-14 bg-transparent p-0">
                 <TabsTrigger 
                   value="roleplay" 
                   className="flex items-center justify-center space-x-1 sm:space-x-2 h-full text-xs sm:text-sm touch-target data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary"
@@ -141,6 +142,14 @@ function MainLayout() {
                 >
                   <Users className="h-4 w-4 sm:h-5 sm:w-5" />
                   <span>Leads</span>
+                </TabsTrigger>
+
+                <TabsTrigger 
+                  value="analytics" 
+                  className="flex items-center justify-center space-x-1 sm:space-x-2 h-full text-xs sm:text-sm touch-target data-[state=active]:bg-primary/10 data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary"
+                >
+                  <ChartBar className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span>Analytics</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -168,6 +177,12 @@ function MainLayout() {
                       <LeadManager />
                     </Suspense>
                   </LeadErrorBoundary>
+                </TabsContent>
+
+                <TabsContent value="analytics" className="mt-0 h-full">
+                  <Suspense fallback={<ComponentLoadingFallback />}>
+                    <AnalyticsPage />
+                  </Suspense>
                 </TabsContent>
               </div>
             </Tabs>

@@ -265,3 +265,78 @@
     margin: 0 1rem;
   }
 }
+
+/*
+  ============================================
+  COMPANY THEME TOKENS
+  Per-company CSS custom properties for
+  EIGER MARVEL HR (blue) and SGC TECH AI (green)
+  ============================================
+*/
+
+/* SGC TECH AI — Green */
+:root {
+  --sgc-primary:       #10B981;   /* emerald-500 */
+  --sgc-primary-dark:  #059669;   /* emerald-600 */
+  --sgc-primary-light: #34D399;   /* emerald-400 */
+  --sgc-secondary:     #065F46;   /* emerald-900 */
+  --sgc-accent:        #6EE7B7;   /* emerald-300 */
+  --sgc-muted:         #D1FAE5;   /* emerald-100 */
+  --sgc-ring:          #10B981;
+  --sgc-shadow:        0 0 24px rgb(16 185 129 / 0.2);
+  --sgc-gradient:      linear-gradient(135deg, #10B981, #059669);
+}
+
+/* EIGER MARVEL HR — Blue */
+:root {
+  --eiger-primary:       #3B82F6;  /* blue-500 */
+  --eiger-primary-dark:  #1D4ED8;  /* blue-700 */
+  --eiger-primary-light: #60A5FA;  /* blue-400 */
+  --eiger-secondary:     #1E3A8A;  /* blue-900 */
+  --eiger-accent:        #93C5FD;  /* blue-300 */
+  --eiger-muted:         #DBEAFE;  /* blue-100 */
+  --eiger-ring:          #3B82F6;
+  --eiger-shadow:        0 0 24px rgb(59 130 246 / 0.2);
+  --eiger-gradient:      linear-gradient(135deg, #3B82F6, #1D4ED8);
+}
+
+/* Company-scoped themes via data attribute */
+[data-company="sgc-tech-ai"] {
+  --company-primary:        var(--sgc-primary);
+  --company-primary-dark:   var(--sgc-primary-dark);
+  --company-primary-light:  var(--sgc-primary-light);
+  --company-secondary:      var(--sgc-secondary);
+  --company-accent:         var(--sgc-accent);
+  --company-muted:          var(--sgc-muted);
+  --company-ring:           var(--sgc-ring);
+  --company-shadow:         var(--sgc-shadow);
+  --company-gradient:       var(--sgc-gradient);
+}
+
+[data-company="eiger-marvel-hr"] {
+  --company-primary:        var(--eiger-primary);
+  --company-primary-dark:   var(--eiger-primary-dark);
+  --company-primary-light:  var(--eiger-primary-light);
+  --company-secondary:      var(--eiger-secondary);
+  --company-accent:         var(--eiger-accent);
+  --company-muted:          var(--eiger-muted);
+  --company-ring:           var(--eiger-ring);
+  --company-shadow:         var(--eiger-shadow);
+  --company-gradient:       var(--eiger-gradient);
+}
+
+/* Utility classes using company tokens */
+.company-primary-text   { color: var(--company-primary); }
+.company-primary-bg     { background-color: var(--company-primary); }
+.company-muted-bg       { background-color: var(--company-muted); }
+.company-border         { border-color: var(--company-primary); }
+.company-ring           { outline-color: var(--company-ring); }
+.company-shadow         { box-shadow: var(--company-shadow); }
+.company-gradient-text  {
+  background: var(--company-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.company-gradient-bg    { background: var(--company-gradient); }
+
