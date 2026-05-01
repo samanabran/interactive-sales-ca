@@ -1,0 +1,6 @@
+services:
+  interactivesalesca:
+    image: interactivesalesca
+    build:
+      context: .
+      dockerfile: ./Dockerfile
