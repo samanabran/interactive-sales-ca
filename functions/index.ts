@@ -30,6 +30,7 @@ app.use('*', cors({
       'http://localhost:5173',
       'http://localhost:3000',
       'https://interactive-sales-ca.pages.dev',
+      'https://train.scholarixglobal.com',
     ];
     return allowedOrigins.includes(origin) ? origin : allowedOrigins[0];
   },

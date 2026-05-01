@@ -43,11 +43,12 @@ recordingRoutes.post('/upload', async (c) => {
     // Upload to R2 - R2.put only takes key and value
     await c.env.RECORDINGS.put(filename, arrayBuffer);
 
-    // Generate public URL (or signed URL depending on your security needs)
-    // For now, we'll use the R2 dev URL format
-    const accountId = '5ca87478e09d6ebc6954f770ac4656e8'; // From your Cloudflare account
-    const bucketName = 'scholarix-recordings';
-    const recordingUrl = `https://${bucketName}.${accountId}.r2.cloudflarestorage.com/${filename}`;
+    // Generate public URL — APP_URL when self-hosted, R2 URL on Cloudflare
+    const r2AccountId = '5ca87478e09d6ebc6954f770ac4656e8';
+    const r2Bucket = 'scholarix-recordings';
+    const recordingUrl = c.env.APP_URL
+      ? `${c.env.APP_URL}/${filename}`
+      : `https://${r2Bucket}.${r2AccountId}.r2.cloudflarestorage.com/${filename}`;
 
     console.log('Recording uploaded successfully:', filename);
 
