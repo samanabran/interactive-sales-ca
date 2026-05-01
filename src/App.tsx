@@ -1,6 +1,7 @@
 // Main application - Zero-cost deployment (Clerk auth removed)
 import { useState, lazy, Suspense, useCallback } from 'react';
 import { CompanyProvider, useCompany } from '@/contexts/CompanyContext';
+import type { CompanyType } from '@/lib/companySelector';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,14 +12,13 @@ import {
   ChartBar,
   Users,
 } from '@phosphor-icons/react';
-import { CallErrorBoundary, AIErrorBoundary, LeadErrorBoundary, ComponentErrorBoundary } from '@/components/ErrorBoundaries';
+import { CallErrorBoundary, AIErrorBoundary, LeadErrorBoundary } from '@/components/ErrorBoundaries';
 import { QueryProvider } from '@/lib/queryClient';
 
 // Lazy load heavy components
 const RolePlayPage = lazy(() => import('@/pages/RolePlayPage'));
 const CallApp = lazy(() => import('@/components/CallApp'));
 const LeadManager = lazy(() => import('@/components/LeadManager'));
-const AdvancedAnalyticsDashboard = lazy(() => import('@/components/AdvancedAnalyticsDashboard'));
 
 // Loading fallback
 function LoadingSpinner() {
@@ -56,17 +56,11 @@ function ComponentLoadingFallback() {
 function MainLayout() {
   const [activeTab, setActiveTab] = useState('roleplay');
   const { selectedCompany, setSelectedCompany } = useCompany();
-  const [selectedPersona, setSelectedPersona] = useState<string | null>(null);
 
   const handleCompanySelect = useCallback((company: string) => {
-    setSelectedCompany(company as any);
-    setSelectedPersona(null);
+    setSelectedCompany(company as CompanyType);
     setActiveTab('roleplay');
   }, [setSelectedCompany]);
-
-  const handlePersonaSelect = useCallback((personaId: string) => {
-    setSelectedPersona(personaId);
-  }, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -155,11 +149,7 @@ function MainLayout() {
                 <TabsContent value="roleplay" className="mt-0 h-full">
                   <AIErrorBoundary componentName="RolePlayPage">
                     <Suspense fallback={<ComponentLoadingFallback />}>
-                      <RolePlayPage 
-                        company={selectedCompany}
-                        onPersonaSelect={handlePersonaSelect}
-                        selectedPersona={selectedPersona}
-                      />
+                      <RolePlayPage />
                     </Suspense>
                   </AIErrorBoundary>
                 </TabsContent>
@@ -167,10 +157,7 @@ function MainLayout() {
                 <TabsContent value="calls" className="mt-0 h-full">
                   <CallErrorBoundary componentName="CallApp">
                     <Suspense fallback={<ComponentLoadingFallback />}>
-                      <CallApp 
-                        company={selectedCompany}
-                        personaId={selectedPersona}
-                      />
+                      <CallApp />
                     </Suspense>
                   </CallErrorBoundary>
                 </TabsContent>
