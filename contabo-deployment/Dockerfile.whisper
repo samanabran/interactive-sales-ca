@@ -1,0 +1,40 @@
+# Whisper.cpp Dockerfile - FREE Local Speech-to-Text
+# GPU-accelerated with OpenAI-compatible API
+# Supports WAV, MP3, M4A, and more
+
+FROM nvidia/cuda:12.2.0-devel-ubuntu22.04
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    curl \
+    python3 \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Clone and build whisper.cpp
+WORKDIR /app
+RUN git clone https://github.com/ggerganov/whisper.cpp.git
+WORKDIR /app/whisper.cpp
+
+# Build with CUDA support
+RUN make whisper-cuda
+
+# Download base model (466MB - good balance of speed/accuracy)
+RUN ./models/download-ggml-model.sh base en
+
+# Install Python for API server
+RUN pip3 install --no-cache-dir \
+    flask \
+    flask-cors \
+    numpy
+
+# Create OpenAI-compatible API server
+COPY whisper_api.py /app/whisper.cpp/whisper_api.py
+
+# Expose API port
+EXPOSE 9000
+
+# Start API server
+CMD ["python3", "whisper_api.py", "--model", "models/ggml-base.en.bin", "--port", "9000", "--cuda"]

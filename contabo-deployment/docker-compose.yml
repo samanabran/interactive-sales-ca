@@ -68,58 +68,18 @@ services:
     networks:
       - contabo-network
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8787/api/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
 
   # ============================================
-  # Background Worker
-  # ============================================
-  worker:
-    build:
-      context: ..
-      dockerfile: contabo-deployment/Dockerfile.worker
-    container_name: scholarix-worker
-    environment:
-      - NODE_ENV=production
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=scholarix_crm
-      - DB_USER=scholarix
-      - DB_PASSWORD=${DB_PASSWORD}
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - contabo-network
-
-  # ============================================
-  # Frontend (React / Vite build served by Nginx)
-  # ============================================
-  web:
-    build:
-      context: ..
-      dockerfile: contabo-deployment/Dockerfile.web
-      args:
-        - VITE_API_BASE_URL=https://train.scholarixglobal.com
-        - VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}
-        - VITE_OLLAMA_BASE_URL=${VITE_OLLAMA_BASE_URL:-http://localhost:11434}
-        - VITE_OLLAMA_MODEL=${VITE_OLLAMA_MODEL:-llama3.1:latest}
-    container_name: scholarix-web
-    restart: unless-stopped
-    networks:
-      - contabo-network
-
-  # ============================================
-  # Nginx Reverse Proxy (SSL termination)
-  # Certs are provisioned on the VPS via Certbot
-  # and bind-mounted into the container.
+  # Nginx Reverse Proxy
+  # Routes traffic to all services
   # ============================================
   nginx:
     image: nginx:alpine
-    container_name: scholarix-nginx
+    container_name: odoo-nginx
     ports:
       - "80:80"
       - "443:443"

@@ -1,0 +1,140 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(wrangler *)",
+      "Bash(git *)",
+      "Bash(gh *)",
+      "Bash(node *)",
+      "Bash(curl *)",
+      "Bash(ssh *)",
+      "Bash(scp *)",
+      "Bash(dotnet *)",
+      "Bash(docker *)",
+      "Bash(docker-compose *)",
+      "Bash(ls *)",
+      "Bash(dir *)",
+      "Bash(pwd)",
+      "Bash(cd *)",
+      "Bash(mkdir *)",
+      "Bash(rm *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(cat *)",
+      "Bash(grep *)",
+      "Bash(find *)",
+      "Bash(rg *)",
+      "Bash(tree *)",
+      "Bash(Get-ChildItem *)",
+      "Bash(Write-Output *)",
+      "Bash(if (Test-Path *))",
+      "Bash(Get-Content *)",
+      "Bash(Get-Item *)",
+      "Bash(ssh -i ~/.ssh/contabo_80_241_218_108 *)",
+      "Bash(scp -i ~/.ssh/contabo_80_241_218_108 *)",
+      "Bash(ssh root@80.241.218.108 *)",
+      "Bash(scp root@80.241.218.108 *)",
+      "Bash(systemctl *)",
+      "Bash(journalctl *)",
+      "Bash(docker stats *)",
+      "Bash(docker logs *)",
+      "Bash(docker exec *)"
+    ]
+  },
+  "model": "claude-sonnet-4-5",
+  "context": {
+    "allowedTools": [
+      "bash",
+      "read",
+      "write",
+      "edit",
+      "grep",
+      "glob",
+      "websearch",
+      "webfetch",
+      "task",
+      "skill",
+      "lsp_goto_definition",
+      "lsp_find_references",
+      "lsp_symbols",
+      "lsp_diagnostics",
+      "lsp_rename",
+      "ast_grep_search",
+      "ast_grep_replace",
+      "memorygraph_recall_memories",
+      "memorygraph_store_memory",
+      "memorygraph_search_memories",
+      "session_search",
+      "session_read",
+      "oh-my-claudecode_t_lsp_hover",
+      "oh-my-claudecode_t_lsp_diagnostics",
+      "oh-my-claudecode_t_ast_grep_search",
+      "oh-my-claudecode_t_state_write",
+      "oh-my-claudecode_t_notepad_write_working",
+      "oh-my-claudecode_t_project_memory_write",
+      "oh-my-claudecode_t_wiki_ingest",
+      "oh-my-claudecode_t_load_omc_skills_local",
+      "context7_resolve-library-id",
+      "context7_query-docs",
+      "grep_app_searchGitHub",
+      "claude-mem_mcp-search_search",
+      "claude-mem_mcp-search_smart_explore"
+    ]
+  },
+  "plugins": {
+    "enabled": [
+      "superpowers",
+      "oh-my-claudecode",
+      "claude-mem",
+      "token-optimizer",
+      "claude-md-management"
+    ],
+    "mcpServers": {
+      "github": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-github"],
+        "env": {
+          "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+        }
+      },
+      "cloudflare": {
+        "command": "npx",
+        "args": ["-y", "@cloudflare/mcp-server-cloudflare"]
+      },
+      "filesystem": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem", "${workspaceFolder}"]
+      },
+      "google-gemini": {
+        "command": "npx",
+        "args": ["-y", "@google/gemini-mcp-server"],
+        "env": {
+          "GEMINI_API_KEY": "${GEMINI_API_KEY}"
+        }
+      }
+    }
+  },
+  "rules": {
+    "requireApproval": {
+      "bash": false,
+      "fileWrite": false,
+      "fileEdit": false
+    },
+    "autoLoadSkills": [
+      "omc-reference",
+      "canvas-design"
+    ]
+  },
+  "env": {
+    "NODE_ENV": "development",
+    "VITE_CLERK_PUBLISHABLE_KEY": "${CLERK_PUBLISHABLE_KEY}",
+    "VITE_API_BASE_URL": "http://localhost:8787/api",
+    "VITE_OPENAI_API_KEY": "${OPENAI_API_KEY}",
+    "VITE_GEMINI_API_KEY": "${GEMINI_API_KEY}",
+    "VITE_OLLAMA_BASE_URL": "http://80.241.218.108:11434",
+    "VITE_TTS_SERVER_URL": "http://80.241.218.108:5050",
+    "VITE_ENVIRONMENT": "development"
+  },
+  "notes": "B2B SALES TRAINING PLATFORM - EIGER MARVEL HR & SGC TECH AI. Zero-cost voice agents: Gemini 3.1 Flash TTS (free, 30+ human-like voices), Edge TTS (free backup, 200+ voices, Contabo:5050), Ollama (local LLM GPU). NO student personas - only B2B decision-makers: HR managers, Operations managers, Finance directors, IT managers, CEOs. Plugins: superpowers, oh-my-claudecode, claude-mem, token-optimizer, claude-md-management. MCP: GitHub (renbran/interactive-sales-ca), Cloudflare, Filesystem, Google Gemini. Migration: Cloudflare → Contabo VPS (80.241.218.108)."
+}

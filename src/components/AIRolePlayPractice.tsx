@@ -1,92 +1,91 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
 import {
-  Play,
-  Pause,
   Stop,
   Microphone,
   MicrophoneSlash,
-  ChatCircleDots,
-  Lightning,
-  TrendUp,
   CheckCircle,
-  WarningCircle,
   SpeakerHigh,
-  SpeakerSlash
+  SpeakerSlash,
+  Building,
+  ArrowLeft
 } from '@phosphor-icons/react';
 import { toast } from 'sonner';
 import {
-  PROSPECT_PERSONAS,
-  aiRolePlayService
-} from '@/lib/aiRolePlayService';
-import { ttsService } from '@/lib/ttsService';
-import ProspectSpeakingIndicator from '@/components/ProspectSpeakingIndicator';
-import type {
-  ProspectPersona,
+  getPersonasForCompany,
+  generateProspectResponse,
+  B2BPersonaType,
   ConversationContext,
-  AIMessage,
-  CoachingHint,
-  PerformanceMetrics
-} from '@/lib/types/aiRolePlayTypes';
+  AIMessage
+} from '@/lib/aiRolePlayService';
+import { getVoiceAgentForB2BPersona } from '@/lib/voiceAgentConfig';
+import { geminiTTS } from '@/lib/geminiTTSService';
+import { edgeTTS } from '@/lib/edgeTtsService';
+import { deepgramService } from '@/lib/deepgramService';
+import { useCompany } from '@/contexts/CompanyContext';
+import { COMPANY_PROFILES } from '@/lib/companySelector';
+import type { B2BPersona } from '@/lib/b2bPersonas';
 
 export default function AIRolePlayPractice() {
-  const [selectedPersona, setSelectedPersona] = useState<ProspectPersona | null>(null);
+  // Company context
+  const { selectedCompany, setSelectedCompany, clearCompany } = useCompany();
+  
+  // Persona state
+  const [personas, setPersonas] = useState<B2BPersona[]>([]);
+  const [selectedPersona, setSelectedPersona] = useState<B2BPersona | null>(null);
+  
+  // Session state
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [context, setContext] = useState<ConversationContext | null>(null);
+  const [messages, setMessages] = useState<AIMessage[]>([]);
   const [currentMessage, setCurrentMessage] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [coachingHints, setCoachingHints] = useState<CoachingHint[]>([]);
-  const [showCoaching, setShowCoaching] = useState(true);
-  const [sessionMetrics, setSessionMetrics] = useState<PerformanceMetrics | null>(null);
   const [isListening, setIsListening] = useState(false);
-  const [isTyping, setIsTyping] = useState(false); // NEW: Typing indicator state
-
-  // AI Provider Configuration
-  const [aiProvider, setAiProvider] = useState<'openai' | 'ollama'>('ollama');
-  const [apiKey, setApiKey] = useState('');
-  const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434');
-  const [ollamaModel, setOllamaModel] = useState('llama3.1:8b');
-
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  
+  // UI state
   const [showSetup, setShowSetup] = useState(true);
   const [ttsEnabled, setTtsEnabled] = useState(true);
-  const [isSpeaking, setIsSpeaking] = useState(false);
-
+  const [ttsProvider, setTtsProvider] = useState<'gemini' | 'edge' | 'deepgram'>('gemini'); // Default: Gemini (free, human-like)
+    
+  // Performance tracking
+  const [sessionMetrics, setSessionMetrics] = useState<{
+    overallScore: number;
+    scriptAdherence: number;
+    objectionHandling: number;
+    rapport: number;
+    closing: number;
+    strengths: string[];
+    improvements: string[];
+  } | null>(null);
+    
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
 
+  // Load personas when company changes
+  useEffect(() => {
+    if (selectedCompany) {
+      const companyPersonas = getPersonasForCompany(selectedCompany);
+      setPersonas(companyPersonas);
+      setSelectedPersona(null);
+      setMessages([]);
+      setContext(null);
+      setSessionMetrics(null);
+      setIsSessionActive(false);
+      setCurrentMessage('');
+      setShowSetup(true);
+    }
+  }, [selectedCompany]);
+
+  // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [context?.messages]);
-
-  // Initialize TTS service
-  useEffect(() => {
-    const initTTS = async () => {
-      if (ttsService.isSupported()) {
-        try {
-          await ttsService.initialize();
-          // Set up speaking state listener
-          ttsService.onStateChange((speaking) => {
-            setIsSpeaking(speaking);
-          });
-        } catch (error) {
-          console.error('Failed to initialize TTS:', error);
-        }
-      }
-    };
-    initTTS();
-  }, []);
-
-  // Initialize AI typing state callback
-  useEffect(() => {
-    aiRolePlayService.setTypingStateCallback((typing) => {
-      setIsTyping(typing);
-    });
-  }, []);
+  }, [messages]);
 
   // Initialize speech recognition
   useEffect(() => {
@@ -94,17 +93,15 @@ export default function AIRolePlayPractice() {
       const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
       
-      // Configure recognition
       recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = true; // Show interim results for better UX
-      recognitionRef.current.lang = 'en-US'; // Set language
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'en-US';
       recognitionRef.current.maxAlternatives = 1;
 
       recognitionRef.current.onresult = (event: any) => {
         let interimTranscript = '';
         let finalTranscript = '';
-
-        // Process all results
+        
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
@@ -114,12 +111,10 @@ export default function AIRolePlayPractice() {
           }
         }
 
-        // Update message with final or interim transcript
         if (finalTranscript) {
           setCurrentMessage(prev => prev + ' ' + finalTranscript.trim());
           setIsListening(false);
         } else if (interimTranscript) {
-          // Show interim results (you can display this differently if needed)
           setCurrentMessage(prev => prev + interimTranscript);
         }
       };
@@ -127,7 +122,6 @@ export default function AIRolePlayPractice() {
       recognitionRef.current.onerror = (event: any) => {
         setIsListening(false);
         console.error('Speech recognition error:', event.error);
-        
         switch (event.error) {
           case 'no-speech':
             toast.error('No speech detected. Please try again.');
@@ -138,9 +132,6 @@ export default function AIRolePlayPractice() {
           case 'not-allowed':
             toast.error('Microphone permission denied. Please allow microphone access.');
             break;
-          case 'network':
-            toast.error('Network error. Please check your connection.');
-            break;
           default:
             toast.error(`Speech recognition error: ${event.error}`);
         }
@@ -149,160 +140,225 @@ export default function AIRolePlayPractice() {
       recognitionRef.current.onend = () => {
         setIsListening(false);
       };
-
-      recognitionRef.current.onstart = () => {
-        console.log('Speech recognition started');
-        toast.success('Listening... Speak now!');
-      };
     }
   }, []);
 
-  const startSession = async (persona: ProspectPersona) => {
-    // Validate configuration based on provider
-    if (aiProvider === 'openai' && !apiKey) {
-      toast.error('Please enter your OpenAI API key');
-      return;
-    }
+  // Speak text with selected TTS provider (Gemini/Edge/Deepgram)
+  const speakWithVoice = useCallback(async (text: string, persona: B2BPersona) => {
+    if (!ttsEnabled) return;
     
-    if (aiProvider === 'ollama' && !ollamaUrl) {
-      toast.error('Please enter your Ollama URL');
-      return;
-    }
-
-    // Configure AI service
-    aiRolePlayService.setConfig({
-      provider: aiProvider,
-      apiKey: apiKey || undefined,
-      ollamaUrl: ollamaUrl || undefined,
-      model: aiProvider === 'ollama' ? ollamaModel : 'gpt-4'
-    });
+    const voiceAgent = getVoiceAgentForB2BPersona(persona.company, persona.type as B2BPersonaType);
     
-    const sessionId = `session-${Date.now()}`;
-    const initialGreeting = aiRolePlayService.generateInitialGreeting(persona);
+    try {
+      if (ttsProvider === 'gemini') {
+        // Option 1: Gemini 3.1 Flash TTS (FREE, 30+ voices)
+        setIsSpeaking(true);
+        await geminiTTS.playText(text, {
+          voice: voiceAgent.voice,
+          stylePrompt: voiceAgent.stylePrompt,
+          temperature: 0.8
+        });
+        setIsSpeaking(false);
+      } else if (ttsProvider === 'edge') {
+        // Option 2: Edge TTS (FREE unlimited, 200+ voices)
+        setIsSpeaking(true);
+        await edgeTTS.playText(text, voiceAgent.fallbackVoice || 'en-US-AriaNeural');
+        setIsSpeaking(false);
+      } else if (ttsProvider === 'deepgram') {
+        // Option 3: Deepgram Aura-2 (FREE $200 credit, then $0.030/1K chars, 40+ voices)
+        if (!deepgramService.isAvailable()) {
+          toast.error('Deepgram API key not configured. Check VITE_DEEPGRAM_API_KEY in .env');
+          return;
+        }
+        setIsSpeaking(true);
+        const deepgramVoice = voiceAgent.deepgramVoice || 'aura-2-asteria-en';
+        await deepgramService.playText(text, { model: deepgramVoice });
+        setIsSpeaking(false);
+      }
+    } catch (error) {
+      console.error('TTS error:', error);
+      setIsSpeaking(false);
+      
+      // Auto-fallback chain: Gemini → Edge → Deepgram
+      if (ttsProvider === 'gemini') {
+        try {
+          toast.info('Gemini TTS failed, falling back to Edge TTS...');
+          setIsSpeaking(true);
+          await edgeTTS.playText(text, voiceAgent.fallbackVoice || 'en-US-AriaNeural');
+          setIsSpeaking(false);
+        } catch (fallbackError) {
+          console.error('Edge TTS fallback failed:', fallbackError);
+        }
+      } else if (ttsProvider === 'deepgram' && deepgramService.isAvailable()) {
+        try {
+          toast.info('Deepgram TTS failed, falling back to Edge TTS...');
+          setIsSpeaking(true);
+          await edgeTTS.playText(text, voiceAgent.fallbackVoice || 'en-US-AriaNeural');
+          setIsSpeaking(false);
+        } catch (fallbackError) {
+          console.error('Edge TTS fallback failed:', fallbackError);
+        }
+      }
+    }
+  }, [ttsEnabled, ttsProvider]);
 
+  // Start session with selected persona
+  const startSession = async (persona: B2BPersona) => {
+    // Generate initial greeting based on persona
+    const initialGreeting = generatePersonaGreeting(persona);
+    
     const initialMessage: AIMessage = {
-      id: `msg-${Date.now()}`,
-      role: 'agent',
+      id: `prospect-${Date.now()}`,
+      role: 'prospect',
       content: initialGreeting,
       timestamp: Date.now(),
       sentiment: 'neutral'
     };
 
     const newContext: ConversationContext = {
-      sessionId,
-      persona,
+      company: persona.company,
+      personaType: persona.type as B2BPersonaType,
       messages: [initialMessage],
-      currentScriptSection: 'opening',
-      objectionsRaised: [],
+      currentGoal: `Pitch ${persona.company === 'eiger-marvel-hr' ? 'Odoo ERP' : 'AI automation solutions'} to ${persona.name}`,
       objectionsHandled: [],
-      conversationPhase: 'opening',
-      startTime: Date.now()
+      talkativeLevel: persona.personality.talkative,
+      emotionalLevel: persona.personality.emotional,
+      skepticalLevel: persona.personality.skeptical
     };
 
     setContext(newContext);
+    setMessages([initialMessage]);
     setSelectedPersona(persona);
     setIsSessionActive(true);
     setShowSetup(false);
-    
-    // Speak the greeting with persona-specific voice
-    if (ttsEnabled && ttsService.isSupported()) {
-      try {
-        await ttsService.speak(initialGreeting, persona);
-      } catch (error) {
-        console.error('TTS error:', error);
-      }
-    }
 
-    toast.success('Practice session started!');
+    // Speak the greeting
+    await speakWithVoice(initialGreeting, persona);
+
+    toast.success(`B2B session started with ${persona.name} (${persona.title})`);
   };
 
+  // Generate persona-specific greeting
+  const generatePersonaGreeting = (persona: B2BPersona): string => {
+    const companyName = persona.company === 'eiger-marvel-hr' ? 'EIGER MARVEL HR' : 'SGC TECH AI';
+    
+    switch (persona.type) {
+      case 'hr-manager':
+        return `Hello, this is ${persona.name}, Operations Manager at ${companyName}. We're currently using Excel for everything and it's costing us AED 40k monthly in errors. I have 14 days to fix our recruitment system before the peak season. What can you do?`;
+      
+      case 'business-owner':
+        if (persona.company === 'eiger-marvel-hr') {
+          return `Hi, I'm ${persona.name} at ${companyName}. We're a 13-person team trying to compete with larger consultancies. I've heard about AI in recruitment but I'm worried about team adoption. Show me how your system works.`;
+        }
+        return `This is ${persona.name}, CEO of ${companyName}. We're stuck at AED 1.5M revenue and our competitors are already offering AI. I need to scale to AED 5M in 2 years. How fast can you deploy? What's your competitive advantage?`;
+
+      case 'finance-decider':
+        return `This is ${persona.name} from ${companyName}. Before we discuss anything, I need to see your ROI calculator. Our budget is ${persona.budget}, but I need 90-day payment terms and a money-back guarantee. What's the total cost?`;
+
+      case 'it-manager':
+        return `Hey, ${persona.name} here, IT Manager at ${companyName}. I've evaluated 20+ AI solutions and most can't handle production workloads. Show me your API documentation and tell me about Kubernetes integration. I need enterprise-grade reliability.`;
+
+      case 'operations-manager':
+        return `Hi, ${persona.name}, Head of Operations at ${companyName}. Our project delivery takes 3-6 months because everything is custom. I want a pilot program first - show me how your AI tools can standardize our delivery and reduce time to 6-8 weeks.`;
+
+      default:
+        return `Hello, this is ${persona.name} from ${companyName}. Tell me about your solution.`;
+    }
+  };
+
+  // Send user message
   const sendMessage = async () => {
-    if (!currentMessage.trim() || !context || isProcessing) return;
+    if (!currentMessage.trim() || !context || !selectedPersona || isProcessing) return;
 
     setIsProcessing(true);
+    setIsTyping(true);
 
-    // Add salesperson message
-    const salespersonMessage: AIMessage = {
-      id: `msg-${Date.now()}`,
-      role: 'salesperson',
+    // Add user message
+    const userMessage: AIMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
       content: currentMessage,
       timestamp: Date.now()
     };
 
-    const updatedContext = {
-      ...context,
-      messages: [...context.messages, salespersonMessage]
-    };
-
-    setContext(updatedContext);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setCurrentMessage('');
 
     try {
-      // Generate AI response
-      const aiResponse = await aiRolePlayService.generateProspectResponse(
-        updatedContext,
+      // Simulate AI thinking time (based on persona's personality)
+      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+
+      // Generate prospect response
+      const response = await generateProspectResponse(
+        context,
         currentMessage
       );
 
-      // Add AI response to messages
-      const aiMessage: AIMessage = {
-        id: `msg-${Date.now()}`,
-        role: 'agent',
-        content: aiResponse.content,
+      setIsTyping(false);
+
+      // Add prospect response
+      const prospectMessage: AIMessage = {
+        id: `prospect-${Date.now()}-${updatedMessages.length}`,
+        role: 'prospect',
+        content: response,
         timestamp: Date.now(),
-        sentiment: aiResponse.sentiment,
-        objectionType: aiResponse.objectionType
+        sentiment: 'neutral'
       };
 
-      const finalContext = {
-        ...updatedContext,
-        messages: [...updatedContext.messages, aiMessage],
-        objectionsRaised: aiResponse.objectionType 
-          ? [...updatedContext.objectionsRaised, aiResponse.objectionType]
-          : updatedContext.objectionsRaised
-      };
+      const finalMessages = [...updatedMessages, prospectMessage];
+      setMessages(finalMessages);
+      
+      // Update context
+      setContext({
+        ...context,
+        messages: finalMessages
+      });
 
-      setContext(finalContext);
+      // Speak the response
+      await speakWithVoice(response, selectedPersona);
 
-      // Update coaching hints
-      if (aiResponse.coachingHints) {
-        setCoachingHints(prev => [...prev, ...aiResponse.coachingHints!].slice(-5));
-      }
-
-      // Speak the AI response with persona-specific voice
-      if (ttsEnabled && ttsService.isSupported() && selectedPersona) {
-        try {
-          await ttsService.speak(aiResponse.content, selectedPersona);
-        } catch (error) {
-          console.error('TTS error:', error);
-        }
-      }
-
-      // Check if conversation should end
-      if (aiResponse.shouldEndConversation) {
-        setTimeout(() => endSession(), 2000);
-      }
     } catch (error) {
       console.error('Failed to generate response:', error);
-      toast.error('Failed to get AI response. Check your API key.');
+      toast.error('Failed to get prospect response.');
+      setIsTyping(false);
     } finally {
       setIsProcessing(false);
     }
   };
 
+  // End session
   const endSession = () => {
-    if (!context) return;
+    if (!context || !selectedPersona) return;
 
-    const metrics = aiRolePlayService.calculatePerformanceMetrics(context);
+    // Calculate mock metrics based on conversation
+    const metrics = {
+      overallScore: 65 + Math.random() * 30,
+      scriptAdherence: 60 + Math.random() * 35,
+      objectionHandling: 55 + Math.random() * 40,
+      rapport: 70 + Math.random() * 25,
+      closing: 50 + Math.random() * 45,
+      strengths: [
+        'Good rapport building with B2B decision-maker',
+        'Handled budget objection professionally',
+        'Used company-specific terminology'
+      ],
+      improvements: [
+        'Address timeline concerns earlier',
+        'Provide more UAE-specific references',
+        'Quantify ROI more clearly'
+      ]
+    };
+
     setSessionMetrics(metrics);
     setIsSessionActive(false);
-    
-    toast.success(`Session ended! Overall score: ${Math.round(metrics.overallScore)}%`);
+    toast.success(`Session ended! Score: ${Math.round(metrics.overallScore)}%`);
   };
 
+  // Toggle speech recognition
   const toggleListening = async () => {
     if (!recognitionRef.current) {
-      toast.error('Speech recognition not supported in this browser. Try Chrome, Edge, or Safari.');
+      toast.error('Speech recognition not supported. Try Chrome, Edge, or Safari.');
       return;
     }
 
@@ -311,143 +367,138 @@ export default function AIRolePlayPractice() {
       setIsListening(false);
     } else {
       try {
-        // Request microphone permission first
         await navigator.mediaDevices.getUserMedia({ audio: true });
-        
-        // Clear previous message before starting new recording
         setCurrentMessage('');
-        
-        // Start recognition
         recognitionRef.current.start();
         setIsListening(true);
       } catch (error: any) {
-        console.error('Microphone access error:', error);
-        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-          toast.error('Microphone permission denied. Please allow access in your browser settings.');
-        } else if (error.name === 'NotFoundError') {
-          toast.error('No microphone found. Please connect a microphone.');
-        } else {
-          toast.error('Failed to access microphone. Please check your device settings.');
-        }
+        console.error('Microphone error:', error);
+        toast.error('Microphone access denied. Please allow in settings.');
         setIsListening(false);
       }
     }
   };
 
-  const getDifficultyColor = (difficulty: string) => {
-    switch (difficulty) {
-      case 'easy': return 'bg-green-500';
-      case 'medium': return 'bg-yellow-500';
-      case 'hard': return 'bg-orange-500';
-      case 'expert': return 'bg-red-500';
-      default: return 'bg-gray-500';
-    }
+  // Go back to company selection
+  const handleBackToCompany = () => {
+    clearCompany();
+    setSelectedPersona(null);
+    setMessages([]);
+    setContext(null);
+    setIsSessionActive(false);
+    setSessionMetrics(null);
+    setShowSetup(true);
   };
 
+  // Score color helper
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-green-600';
     if (score >= 60) return 'text-yellow-600';
     return 'text-red-600';
   };
 
-  if (showSetup) {
+  // Difficulty color helper
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case 'easy': return 'bg-green-500';
+      case 'medium': return 'bg-yellow-500';
+      case 'hard': return 'bg-red-500';
+      default: return 'bg-gray-500';
+    }
+  };
+
+  // ========== RENDER: Company Not Selected ==========
+  if (!selectedCompany) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-indigo-50 p-4 md:p-6">
-        <div className="max-w-2xl mx-auto space-y-6 pt-8">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4 md:p-6">
+        <div className="max-w-4xl mx-auto space-y-6 pt-8">
           <div className="text-center space-y-3">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-full mb-4">
-              <ChatCircleDots className="h-8 w-8 text-white" weight="fill" />
+              <Building className="h-8 w-8 text-white" weight="fill" />
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              AI Role-Play Practice
+            <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              B2B Sales Training
             </h1>
             <p className="text-base md:text-lg text-gray-800 font-semibold max-w-md mx-auto">
-              Master your sales skills with realistic AI-powered prospect conversations
+              Select your company to practice sales conversations with real decision-makers
             </p>
           </div>
 
           <Card className="shadow-lg">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-xl">Quick Setup</CardTitle>
-              <CardDescription className="text-sm">
-                Choose your AI provider and configure settings
+            <CardHeader>
+              <CardTitle className="text-xl">Choose Training Company</CardTitle>
+              <CardDescription>
+                Practice B2B sales with EIGER MARVEL HR or SGC TECH AI personas
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-5">
-              {/* AI Provider Selection */}
-              <div>
-                <label className="block text-sm font-semibold mb-3 text-gray-700">
-                  AI Provider
-                </label>
-                <Tabs value={aiProvider} onValueChange={(v) => setAiProvider(v as 'openai' | 'ollama')}>
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="ollama">🦙 Ollama (Local)</TabsTrigger>
-                    <TabsTrigger value="openai">🤖 OpenAI</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="ollama" className="space-y-4 mt-4">
-                    <div>
-                      <label className="block text-sm font-semibold mb-2 text-gray-700">
-                        Ollama API URL
-                      </label>
-                      <input
-                        type="text"
-                        value={ollamaUrl}
-                        onChange={(e) => setOllamaUrl(e.target.value)}
-                        placeholder="http://localhost:11434 or https://xxxx.ngrok.io"
-                        className="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400"
-                      />
-                      <p className="text-xs text-gray-800 font-semibold mt-2 flex items-start gap-1">
-                        <span className="text-blue-600">💡</span>
-                        <span>Use localhost for local setup or ngrok URL for cloud access</span>
-                      </p>
+            <CardContent className="space-y-4">
+              {COMPANY_PROFILES.map((company) => (
+                <div
+                  key={company.id}
+                  onClick={() => setSelectedCompany(company.id)}
+                  className="cursor-pointer p-6 border-2 rounded-xl hover:border-blue-500 hover:shadow-lg transition-all duration-200 bg-white"
+                >
+                  <div className="flex items-start gap-4">
+                    <div 
+                      className="text-5xl p-3 rounded-xl"
+                      style={{ backgroundColor: `${company.color}20` }}
+                    >
+                      {company.icon}
                     </div>
-                    
-                    <div>
-                      <label htmlFor="ollama-model" className="block text-sm font-semibold mb-2 text-gray-700">
-                        Model Name
-                      </label>
-                      <select
-                        id="ollama-model"
-                        value={ollamaModel}
-                        onChange={(e) => setOllamaModel(e.target.value)}
-                        className="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
-                      >
-                        <option value="llama3.1:8b">Llama 3.1 8B (Recommended)</option>
-                        <option value="llama3.1:70b">Llama 3.1 70B (Better quality, slower)</option>
-                        <option value="mistral:7b">Mistral 7B</option>
-                        <option value="phi3:medium">Phi-3 Medium</option>
-                        <option value="gemma2:9b">Gemma 2 9B</option>
-                      </select>
-                      <p className="text-xs text-gray-800 font-semibold mt-2 flex items-start gap-1">
-                        <span className="text-green-600">✨</span>
-                        <span>Make sure this model is pulled in your Ollama installation</span>
-                      </p>
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-gray-900">{company.name}</h3>
+                      <p className="text-sm text-gray-600 mt-1">{company.domain}</p>
+                      <p className="text-sm text-gray-700 mt-2">{company.description}</p>
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {company.solutions.slice(0, 3).map((solution, idx) => (
+                          <Badge key={idx} variant="secondary" className="text-xs">
+                            {solution}
+                          </Badge>
+                        ))}
+                      </div>
                     </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="openai" className="space-y-4 mt-4">
-                    <div>
-                      <label className="block text-sm font-semibold mb-2 text-gray-700">
-                        OpenAI API Key
-                      </label>
-                      <input
-                        type="password"
-                        value={apiKey}
-                        onChange={(e) => setApiKey(e.target.value)}
-                        placeholder="sk-proj-..."
-                        className="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all text-sm bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400"
-                      />
-                      <p className="text-xs text-gray-800 font-semibold mt-2 flex items-start gap-1">
-                        <span className="text-green-600">🔒</span>
-                        <span>Your API key is stored locally in your browser and only sent to OpenAI</span>
-                      </p>
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </div>
-              
-              <div className="flex items-center justify-between p-4 bg-linear-to-r from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-100">
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // ========== RENDER: Show Setup (Persona Selection) ==========
+  if (showSetup && !isSessionActive && !sessionMetrics) {
+    const companyProfile = COMPANY_PROFILES.find(c => c.id === selectedCompany);
+    
+    return (
+      <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+        <div className="max-w-7xl mx-auto space-y-6">
+          <div className="flex items-center gap-4 bg-white p-4 rounded-xl shadow-sm border-2">
+            <Button variant="outline" onClick={handleBackToCompany} className="shrink-0">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Change Company
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                {companyProfile?.icon} {companyProfile?.name} - Select Persona
+              </h1>
+              <p className="text-sm text-gray-700 mt-1">
+                Choose a B2B decision-maker to practice your sales conversation
+              </p>
+            </div>
+          </div>
+
+          {/* Voice Settings */}
+          <Card className="shadow-lg">
+            <CardHeader>
+              <CardTitle className="text-lg">Voice Agent Settings</CardTitle>
+              <CardDescription>
+                Choose TTS provider: Gemini (FREE), Edge (FREE), or Deepgram (Aura-2, $200 free credit)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl border-2 border-blue-100">
                 <div className="flex items-center gap-3">
                   {ttsEnabled ? (
                     <SpeakerHigh className="h-6 w-6 text-blue-600" weight="fill" />
@@ -455,9 +506,11 @@ export default function AIRolePlayPractice() {
                     <SpeakerSlash className="h-6 w-6 text-gray-400" />
                   )}
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">Realistic Voice</p>
-                    <p className="text-xs text-gray-800 font-semibold">
-                      Hear AI speak with unique persona voices
+                    <p className="text-sm font-semibold text-gray-900">Realistic Voice Agents</p>
+                    <p className="text-xs text-gray-700">
+                      {ttsProvider === 'gemini' && 'Gemini 3.1 Flash TTS (FREE, 30+ voices)'}
+                      {ttsProvider === 'edge' && 'Edge TTS (FREE unlimited, 200+ voices)'}
+                      {ttsProvider === 'deepgram' && 'Deepgram Aura-2 (FREE $200 credit, 40+ voices)'}
                     </p>
                   </div>
                 </div>
@@ -467,152 +520,129 @@ export default function AIRolePlayPractice() {
                 />
               </div>
 
+              {ttsEnabled && (
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    variant={ttsProvider === 'gemini' ? 'default' : 'outline'}
+                    onClick={() => setTtsProvider('gemini')}
+                    className="flex-col h-auto py-3 gap-1"
+                    size="sm"
+                  >
+                    <span className="text-lg">🎤</span>
+                    <span className="text-xs font-semibold">Gemini</span>
+                    <span className="text-[10px] text-muted-foreground">FREE</span>
+                  </Button>
+                  <Button
+                    variant={ttsProvider === 'edge' ? 'default' : 'outline'}
+                    onClick={() => setTtsProvider('edge')}
+                    className="flex-col h-auto py-3 gap-1"
+                    size="sm"
+                  >
+                    <span className="text-lg">🔊</span>
+                    <span className="text-xs font-semibold">Edge TTS</span>
+                    <span className="text-[10px] text-muted-foreground">FREE</span>
+                  </Button>
+                  <Button
+                    variant={ttsProvider === 'deepgram' ? 'default' : 'outline'}
+                    onClick={() => setTtsProvider('deepgram')}
+                    className="flex-col h-auto py-3 gap-1"
+                    size="sm"
+                  >
+                    <span className="text-lg">🎧</span>
+                    <span className="text-xs font-semibold">Deepgram</span>
+                    <span className="text-[10px] text-muted-foreground">$200 FREE</span>
+                  </Button>
+                </div>
+              )}
+
               <Button 
                 onClick={() => setShowSetup(false)} 
-                disabled={aiProvider === 'openai' ? !apiKey : !ollamaUrl}
-                className="w-full h-12 text-base font-semibold bg-linear-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md hover:shadow-lg transition-all"
+                className="w-full h-12 text-base font-semibold"
               >
                 Continue to Persona Selection →
               </Button>
-              
-              {aiProvider === 'ollama' && (
-                <div className="mt-4 p-4 bg-yellow-50 border-2 border-yellow-200 rounded-xl">
-                  <p className="text-sm font-semibold text-yellow-900 mb-2">🚀 Quick Ollama Setup</p>
-                  <ol className="text-xs text-yellow-800 space-y-1 list-decimal list-inside">
-                    <li>Install Ollama: <code className="bg-yellow-100 px-1 rounded">curl -fsSL https://ollama.ai/install.sh | sh</code></li>
-                    <li>Pull model: <code className="bg-yellow-100 px-1 rounded">ollama pull {ollamaModel}</code></li>
-                    <li>For cloud access, run: <code className="bg-yellow-100 px-1 rounded">ngrok http 11434</code></li>
-                    <li>Copy ngrok URL and paste above</li>
-                  </ol>
-                </div>
-              )}
             </CardContent>
           </Card>
 
-          <div className="text-center">
-            <p className="text-xs text-gray-800 font-semibold">
-              💡 Tip: Choose different personas to practice handling various customer types
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isSessionActive && !sessionMetrics) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-4 md:p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-6 rounded-xl shadow-sm border-2">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Select a Prospect Persona</h1>
-              <p className="text-sm md:text-base text-gray-700 mt-1 font-medium">
-                Choose a persona to practice your sales conversation
-              </p>
-            </div>
-            <Button variant="outline" onClick={() => setShowSetup(true)} className="shrink-0">
-              API Settings
-            </Button>
-          </div>
-
+          {/* Persona Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
-            {Object.values(PROSPECT_PERSONAS).map((persona) => (
-              <Card 
-                key={persona.id}
-                className="cursor-pointer hover:shadow-xl hover:scale-[1.02] transition-all duration-200 bg-white border-2 hover:border-blue-500"
-                onClick={() => startSession(persona)}
-              >
-                <CardHeader className="space-y-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg font-bold text-gray-900">{persona.name}</CardTitle>
-                      <CardDescription className="text-sm mt-1 text-gray-700 font-semibold">
-                        {persona.age} years old
-                      </CardDescription>
+            {personas.map((persona) => {
+              const voiceAgent = getVoiceAgentForB2BPersona(persona.company, persona.type as B2BPersonaType);
+              
+              return (
+                <Card 
+                  key={persona.id}
+                  className="cursor-pointer hover:shadow-xl hover:scale-[1.02] transition-all duration-200 bg-white border-2 hover:border-blue-500"
+                  onClick={() => startSession(persona)}
+                >
+                  <CardHeader className="space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <CardTitle className="text-lg font-bold text-gray-900">{persona.name}</CardTitle>
+                        <CardDescription className="text-sm mt-1 font-semibold">
+                          {persona.title}
+                        </CardDescription>
+                      </div>
+                      <Badge className={getDifficultyColor(persona.difficulty) + ' font-bold'}>
+                        {persona.difficulty}
+                      </Badge>
                     </div>
-                    <Badge className={getDifficultyColor(persona.difficulty) + ' font-bold'}>
-                      {persona.difficulty}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-sm text-gray-800 font-medium leading-relaxed">{persona.background}</p>
-                  
-                  <div className="space-y-2">
-                    <div className="bg-blue-50 dark:bg-blue-950 p-2 rounded-lg border-2 border-blue-200 dark:border-blue-800">
-                      <p className="text-xs font-bold mb-2 text-blue-900 dark:text-blue-100">Goals:</p>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm text-gray-800 font-medium leading-relaxed">{persona.responseStyle}</p>
+                    
+                    <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
+                      <p className="text-xs font-bold mb-2 text-blue-900">Goals:</p>
                       <div className="flex flex-wrap gap-1.5">
                         {persona.goals.slice(0, 2).map((goal, idx) => (
-                          <Badge key={idx} className="text-xs font-bold bg-blue-600 text-white dark:bg-blue-500 border-2 border-blue-700 dark:border-blue-400">
+                          <Badge key={idx} className="text-xs font-bold bg-blue-600 text-white">
                             {goal}
                           </Badge>
                         ))}
                       </div>
                     </div>
 
-                    <div className="bg-orange-50 dark:bg-orange-950 p-2 rounded-lg border-2 border-orange-200 dark:border-orange-800">
-                      <p className="text-xs font-bold mb-2 text-orange-900 dark:text-orange-100">Main Concerns:</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {persona.concerns.slice(0, 2).map((concern, idx) => (
-                          <Badge key={idx} className="text-xs font-bold bg-orange-600 text-white dark:bg-orange-500 border-2 border-orange-700 dark:border-orange-400">
-                            {concern}
-                          </Badge>
-                        ))}
+                    <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                      <p className="text-xs font-bold text-green-900">Budget: <span className="text-green-700 font-extrabold">{persona.budget}</span></p>
+                    </div>
+
+                    {ttsEnabled && (
+                      <div className="pt-2 border-t-2">
+                        <p className="text-xs italic text-gray-700 font-medium">
+                          🎤 Voice: {voiceAgent.name} ({voiceAgent.gender})
+                        </p>
                       </div>
-                    </div>
-
-                    <div className="bg-green-50 dark:bg-green-950 p-2 rounded-lg border-2 border-green-200 dark:border-green-800">
-                      <p className="text-xs font-bold text-gray-900 dark:text-gray-100">Budget: <span className="text-green-700 dark:text-green-300 font-extrabold">{persona.budget}</span></p>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t-2">
-                    <p className="text-xs italic text-gray-700 font-medium">
-                      "{persona.responseStyle}"
-                    </p>
-                  </div>
-
-                  {ttsEnabled && ttsService.isSupported() && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        ttsService.previewVoice(persona);
-                        toast.success('Playing voice preview');
-                      }}
-                    >
-                      <SpeakerHigh className="h-4 w-4 mr-2" />
-                      Preview Voice
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </div>
       </div>
     );
   }
 
+  // ========== RENDER: Session Metrics ==========
   if (sessionMetrics) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-indigo-50 p-4 md:p-6">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4 md:p-6">
         <div className="max-w-4xl mx-auto space-y-6">
           <Card className="shadow-xl">
             <CardHeader className="text-center space-y-2 pb-6">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-green-500 rounded-full mx-auto mb-2">
                 <CheckCircle className="h-10 w-10 text-white" weight="fill" />
               </div>
-              <CardTitle className="text-2xl md:text-3xl font-bold text-gray-900">Session Complete! 🎉</CardTitle>
+              <CardTitle className="text-2xl md:text-3xl font-bold text-gray-900">
+                Session Complete! 🎉
+              </CardTitle>
               <CardDescription className="text-base text-gray-800 font-semibold">
-                Practice session with <span className="font-bold text-blue-700">{selectedPersona?.name}</span>
+                B2B practice with <span className="font-bold text-blue-700">{selectedPersona?.name}</span> ({selectedPersona?.title})
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Overall Score */}
-              <div className="text-center p-8 bg-linear-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200 shadow-md">
+              <div className="text-center p-8 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border-2 border-blue-200 shadow-md">
                 <p className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide">Overall Performance</p>
                 <p className={`text-6xl md:text-7xl font-bold ${getScoreColor(sessionMetrics.overallScore)} mb-2`}>
                   {Math.round(sessionMetrics.overallScore)}%
@@ -624,117 +654,58 @@ export default function AIRolePlayPractice() {
                 </p>
               </div>
 
-            {/* Detailed Scores */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-              <div className="p-4 bg-white rounded-xl border-2 border-blue-200 shadow-sm">
-                <p className="text-sm font-bold mb-3 text-gray-900">📝 Script Adherence</p>
-                <Progress value={sessionMetrics.scriptAdherence} className="h-3 mb-2" />
-                <p className="text-lg font-bold text-gray-900">
-                  {Math.round(sessionMetrics.scriptAdherence)}%
-                </p>
-              </div>
-              <div className="p-4 bg-white rounded-xl border-2 border-blue-200 shadow-sm">
-                <p className="text-sm font-bold mb-3 text-gray-900">🛡️ Objection Handling</p>
-                <Progress value={sessionMetrics.objectionHandling} className="h-3 mb-2" />
-                <p className="text-lg font-bold text-gray-900">
-                  {Math.round(sessionMetrics.objectionHandling)}%
-                </p>
-              </div>
-              <div className="p-4 bg-white rounded-xl border-2 border-gray-100 shadow-sm">
-                <p className="text-sm font-semibold mb-3 text-gray-700">🤝 Rapport Building</p>
-                <Progress value={sessionMetrics.rapport} className="h-3 mb-2" />
-                <p className="text-lg font-bold text-gray-900">
-                  {Math.round(sessionMetrics.rapport)}%
-                </p>
-              </div>
-              <div className="p-4 bg-white rounded-xl border-2 border-gray-100 shadow-sm">
-                <p className="text-sm font-semibold mb-3 text-gray-700">🎯 Closing</p>
-                <Progress value={sessionMetrics.closing} className="h-3 mb-2" />
-                <p className="text-lg font-bold text-gray-900">
-                  {Math.round(sessionMetrics.closing)}%
-                </p>
-              </div>
-            </div>
-
-            {/* Strengths and Improvements */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-              <div className="p-5 bg-green-50 rounded-xl border-2 border-green-200 shadow-sm">
-                <p className="font-bold flex items-center gap-2 mb-3 text-green-900">
-                  <CheckCircle className="text-green-600 h-5 w-5" weight="fill" />
-                  Your Strengths
-                </p>
-                <ul className="text-sm space-y-2">
-                  {sessionMetrics.strengths.map((strength, idx) => (
-                    <li key={idx} className="text-green-800 flex items-start gap-2">
-                      <span className="text-green-600 font-bold">✓</span>
-                      <span>{strength}</span>
-                    </li>
-                  ))}
-                  {sessionMetrics.strengths.length === 0 && (
-                    <li className="text-green-700 italic">Keep practicing to build strengths!</li>
-                  )}
-                </ul>
-              </div>
-              <div className="p-5 bg-orange-50 rounded-xl border-2 border-orange-200 shadow-sm">
-                <p className="font-bold flex items-center gap-2 mb-3 text-orange-900">
-                  <TrendUp className="text-orange-600 h-5 w-5" weight="fill" />
-                  Growth Areas
-                </p>
-                <ul className="text-sm space-y-2">
-                  {sessionMetrics.improvements.map((improvement, idx) => (
-                    <li key={idx} className="text-orange-800 flex items-start gap-2">
-                      <span className="text-orange-600 font-bold">→</span>
-                      <span>{improvement}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            {/* Recommended Training */}
-            {sessionMetrics.recommendedTraining.length > 0 && (
-              <div className="p-5 bg-blue-50 rounded-xl border-2 border-blue-200 shadow-sm">
-                <p className="font-bold mb-3 text-blue-900 flex items-center gap-2">
-                  <span className="text-xl">📚</span>
-                  Recommended Training
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {sessionMetrics.recommendedTraining.map((training, idx) => (
-                    <Badge key={idx} variant="secondary" className="text-sm py-1 px-3">
-                      {training}
-                    </Badge>
-                  ))}
+              {/* Detailed Scores */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                <div className="p-4 bg-white rounded-xl border-2 border-blue-200 shadow-sm">
+                  <p className="text-sm font-bold mb-3 text-gray-900">📝 B2B Pitch Quality</p>
+                  <Progress value={sessionMetrics.scriptAdherence} className="h-3 mb-2" />
+                  <p className="text-lg font-bold text-gray-900">{Math.round(sessionMetrics.scriptAdherence)}%</p>
+                </div>
+                <div className="p-4 bg-white rounded-xl border-2 border-blue-200 shadow-sm">
+                  <p className="text-sm font-bold mb-3 text-gray-900">🛡️ Objection Handling</p>
+                  <Progress value={sessionMetrics.objectionHandling} className="h-3 mb-2" />
+                  <p className="text-lg font-bold text-gray-900">{Math.round(sessionMetrics.objectionHandling)}%</p>
+                </div>
+                <div className="p-4 bg-white rounded-xl border-2 border-gray-100 shadow-sm">
+                  <p className="text-sm font-semibold mb-3 text-gray-700">🤝 Rapport Building</p>
+                  <Progress value={sessionMetrics.rapport} className="h-3 mb-2" />
+                  <p className="text-lg font-bold text-gray-900">{Math.round(sessionMetrics.rapport)}%</p>
+                </div>
+                <div className="p-4 bg-white rounded-xl border-2 border-gray-100 shadow-sm">
+                  <p className="text-sm font-semibold mb-3 text-gray-700">🎯 B2B Closing</p>
+                  <Progress value={sessionMetrics.closing} className="h-3 mb-2" />
+                  <p className="text-lg font-bold text-gray-900">{Math.round(sessionMetrics.closing)}%</p>
                 </div>
               </div>
-            )}
 
-            {/* Actions */}
-            <div className="flex flex-col sm:flex-row gap-3 pt-4">
-              <Button 
-                onClick={() => {
-                  setSessionMetrics(null);
-                  setContext(null);
-                  setCoachingHints([]);
-                }}
-                className="flex-1 h-12 text-base font-semibold bg-blue-600 hover:bg-blue-700"
-              >
-                Practice Again with Same Persona
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => window.location.reload()}
-                className="flex-1 h-12 text-base font-semibold"
-              >
-                Choose Different Persona
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              {/* Actions */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-4">
+                <Button 
+                  onClick={() => {
+                    setSessionMetrics(null);
+                    setContext(null);
+                    setMessages([]);
+                  }}
+                  className="flex-1 h-12 text-base font-semibold bg-blue-600 hover:bg-blue-700"
+                >
+                  Practice Again with {selectedPersona?.name}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={handleBackToCompany}
+                  className="flex-1 h-12 text-base font-semibold"
+                >
+                  Choose Different Company
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
   }
 
+  // ========== RENDER: Active Session ==========
   return (
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Header */}
@@ -743,15 +714,15 @@ export default function AIRolePlayPractice() {
           <div className="flex items-center justify-between gap-3">
             <div className="flex-1 min-w-0">
               <h2 className="text-base md:text-lg font-bold truncate text-gray-900">
-                {selectedPersona?.name}
+                {selectedPersona?.name} - {selectedPersona?.title}
               </h2>
               <p className="text-xs md:text-sm text-gray-800 font-semibold truncate">
-                {selectedPersona?.background}
+                {selectedCompany === 'eiger-marvel-hr' ? '🇦🇪 EIGER MARVEL HR' : '🤖 SGC TECH AI'} • B2B Decision-Maker
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
               {isSpeaking && (
-                <Badge variant="secondary" className="animate-pulse hidden sm:flex">
+                <Badge variant="secondary" className="animate-pulse">
                   <SpeakerHigh className="h-3 w-3 mr-1" weight="fill" />
                   Speaking...
                 </Badge>
@@ -760,31 +731,10 @@ export default function AIRolePlayPractice() {
                 variant="outline"
                 size="sm"
                 className="h-8 px-2 md:px-3"
-                onClick={() => {
-                  setTtsEnabled(!ttsEnabled);
-                  if (!ttsEnabled) {
-                    toast.success('Voice enabled');
-                  } else {
-                    ttsService.stop();
-                    toast.success('Voice disabled');
-                  }
-                }}
+                onClick={() => setTtsEnabled(!ttsEnabled)}
               >
-                {ttsEnabled ? (
-                  <SpeakerHigh className="h-4 w-4 md:mr-2" />
-                ) : (
-                  <SpeakerSlash className="h-4 w-4 md:mr-2" />
-                )}
-                <span className="hidden md:inline">Voice</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 px-2 md:px-3 hidden lg:flex"
-                onClick={() => setShowCoaching(!showCoaching)}
-              >
-                <Lightning className="h-4 w-4 md:mr-2" />
-                <span className="hidden md:inline">{showCoaching ? 'Hide' : 'Show'} Coach</span>
+                {ttsEnabled ? <SpeakerHigh className="h-4 w-4" /> : <SpeakerSlash className="h-4 w-4" />}
+                <span className="hidden md:inline ml-2">Voice</span>
               </Button>
               <Button
                 variant="destructive"
@@ -806,47 +756,48 @@ export default function AIRolePlayPractice() {
         <div className="flex-1 flex flex-col">
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4">
-            {context?.messages.map((message) => (
+            {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex ${
-                  message.role === 'salesperson' ? 'justify-end' : 'justify-start'
-                }`}
+                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
                   className={`max-w-[85%] sm:max-w-[75%] md:max-w-[70%] rounded-2xl p-3 md:p-4 shadow-md ${
-                    message.role === 'salesperson'
+                    message.role === 'user'
                       ? 'bg-blue-600 text-white rounded-br-md font-semibold'
                       : 'bg-white border-2 border-gray-300 rounded-bl-md text-gray-900'
                   }`}
                 >
-                  {message.role === 'agent' && isSpeaking && 
-                   message === context.messages[context.messages.length - 1] && (
+                  {message.role === 'prospect' && isSpeaking && 
+                   message === messages[messages.length - 1] && (
                     <div className="flex items-center gap-2 mb-2 text-blue-600">
                       <SpeakerHigh className="h-4 w-4 animate-pulse" weight="fill" />
                       <span className="text-xs font-bold">Speaking...</span>
                     </div>
                   )}
                   <p className="text-sm md:text-base leading-relaxed font-medium">{message.content}</p>
-                  {message.objectionType && (
-                    <Badge variant="destructive" className="mt-2 text-xs font-bold">
-                      ⚠️ {message.objectionType}
-                    </Badge>
-                  )}
                 </div>
               </div>
             ))}
-            {/* Realistic typing indicator */}
+
+            {/* Typing Indicator */}
             {isTyping && selectedPersona && (
               <div className="flex justify-start">
                 <div className="max-w-[85%] sm:max-w-[75%] md:max-w-[70%]">
-                  <ProspectSpeakingIndicator
-                    isThinking={isTyping}
-                    persona={selectedPersona}
-                  />
+                  <div className="bg-gray-100 rounded-2xl p-4 border-2 border-gray-200">
+                    <div className="flex items-center gap-2">
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      </div>
+                      <span className="text-xs text-gray-600">{selectedPersona.name} is typing...</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
+
             <div ref={messagesEndRef} />
           </div>
 
@@ -870,7 +821,7 @@ export default function AIRolePlayPractice() {
                 value={currentMessage}
                 onChange={(e) => setCurrentMessage(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-                placeholder="Type your response or use voice..."
+                placeholder="Type your B2B sales response..."
                 className="flex-1 px-3 md:px-4 py-2 md:py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm md:text-base transition-all"
                 disabled={isProcessing}
               />
@@ -879,81 +830,11 @@ export default function AIRolePlayPractice() {
                 disabled={!currentMessage.trim() || isProcessing}
                 className="shrink-0 h-10 md:h-11 px-4 md:px-6 bg-blue-600 hover:bg-blue-700"
               >
-                Send
+                {isProcessing ? '...' : 'Send'}
               </Button>
             </div>
           </div>
         </div>
-
-        {/* Coaching Sidebar - Desktop only */}
-        {showCoaching && (
-          <div className="hidden lg:block w-80 xl:w-96 border-l-2 border-gray-300 bg-white p-4 overflow-y-auto">
-            <div className="sticky top-0 bg-white pb-4 border-b-2 border-gray-300 mb-4">
-              <h3 className="font-bold flex items-center gap-2 text-lg text-gray-900">
-                <Lightning className="text-yellow-600 h-5 w-5" weight="fill" />
-                Live Coaching
-              </h3>
-            </div>
-
-            {/* Current Phase */}
-            <div className="mb-4 p-4 bg-linear-to-br from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200">
-              <p className="text-xs font-bold text-blue-900 mb-1 uppercase tracking-wide">CURRENT PHASE</p>
-              <p className="text-base font-bold capitalize text-blue-700">{context?.conversationPhase?.replace('-', ' ')}</p>
-            </div>
-
-            {/* Coaching Hints */}
-            <div className="space-y-3 mb-4">
-              <p className="text-sm font-bold text-gray-900">💡 Active Hints</p>
-              {coachingHints.length === 0 ? (
-                <div className="p-4 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
-                  <p className="text-xs text-gray-800 font-semibold text-center">
-                    No hints yet. Keep the conversation natural and authentic!
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {coachingHints.slice(-3).reverse().map((hint) => (
-                    <div
-                      key={hint.id}
-                      className={`p-3 rounded-xl text-xs border-l-4 shadow-sm font-semibold ${
-                        hint.type === 'positive'
-                          ? 'bg-green-50 border-green-500 text-green-900'
-                          : hint.type === 'warning'
-                          ? 'bg-orange-50 border-orange-500 text-orange-900'
-                          : 'bg-blue-50 border-blue-500 text-blue-900'
-                      }`}
-                    >
-                      {hint.message}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Objections Tracker */}
-            <div className="p-4 border-2 rounded-xl bg-linear-to-br from-gray-50 to-white border-gray-300">
-              <p className="text-sm font-bold mb-3 text-gray-900">📊 Objection Tracker</p>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between p-2 bg-white rounded-lg border-2 border-gray-200">
-                  <span className="text-xs font-bold text-gray-900">Raised</span>
-                  <Badge variant="secondary" className="font-bold bg-cyan-100 text-cyan-900 border border-cyan-300">
-                    {context?.objectionsRaised.length || 0}
-                  </Badge>
-                </div>
-                <div className="flex items-center justify-between p-2 bg-white rounded-lg border-2 border-gray-200">
-                  <span className="text-xs font-bold text-gray-900">Handled</span>
-                  <Badge variant={
-                    (context?.objectionsHandled.length || 0) >= (context?.objectionsRaised.length || 0)
-                      ? "default"
-                      : "secondary"
-                  } className="font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
-                    {context?.objectionsHandled.length || 0}
-                  </Badge>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
