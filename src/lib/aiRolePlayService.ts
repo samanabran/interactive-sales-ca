@@ -10,6 +10,8 @@ import {
   ALL_B2B_PERSONAS
 } from './b2bPersonas';
 import { CompanyType } from './companySelector';
+import { detectObjectionType, getBestResponse as getEigerBestResponse } from './objections/eigerMarvelObjections';
+import { detectTechObjectionType, getTechBestResponse } from './objections/sdcTechAIObjections';
 
 export type { B2BPersonaType } from './b2bPersonas';
 
@@ -78,48 +80,32 @@ export async function generateProspectResponse(
 }
 
 /**
- * Core B2B response generation logic
+ * Core B2B response generation logic — delegates to company-specific objection libraries
  */
 function generateB2BResponse(
   persona: B2BPersona,
   userMessage: string
 ): string {
-  
-  const message = userMessage.toLowerCase();
-  
-  // ===== COST OBJECTIONS =====
-  if (message.includes('cost') || message.includes('price') || message.includes('budget')) {
-    if (persona.objectionLikelihood.cost > 0.6) {
-      return generateCostObjection(persona);
+  if (persona.company === 'eiger-marvel-hr') {
+    const objectionType = detectObjectionType(userMessage);
+    if (objectionType) {
+      const response = getEigerBestResponse(objectionType);
+      if (response) return response.script;
+    }
+  } else {
+    const techObjectionType = detectTechObjectionType(userMessage);
+    if (techObjectionType) {
+      const response = getTechBestResponse(techObjectionType);
+      if (response) return response.script;
     }
   }
-  
-  // ===== TIMELINE/IMPLEMENTATION =====
-  if (message.includes('time') || message.includes('long') || message.includes('deploy')) {
-    if (persona.objectionLikelihood.timeline > 0.5) {
-      return generateTimelineObjection(persona);
-    }
-  }
-  
-  // ===== QUALITY/COMPETENCE =====
-  if (message.includes('quality') || message.includes('proof') || message.includes('reference')) {
-    if (persona.objectionLikelihood.quality > 0.5) {
-      return generateQualityObjection(persona);
-    }
-  }
-  
-  // ===== COMPETITION =====
-  if (message.includes('competitor') || message.includes('sap') || message.includes('oracle')) {
-    if (persona.objectionLikelihood.competition > 0.6) {
-      return generateCompetitionObjection(persona);
-    }
-  }
-  
+
   // ===== POSITIVE RESPONSES =====
+  const message = userMessage.toLowerCase();
   if (message.includes('roi') || message.includes('save') || message.includes('benefit')) {
     return generatePositiveResponse(persona);
   }
-  
+
   // ===== DEFAULT PERSONA RESPONSE =====
   return generatePersonaDefaultResponse(persona);
 }
@@ -139,76 +125,6 @@ function applyTalkativeStyle(text: string, talkativeLevel: number): string {
 // ============================================
 // B2B Objection Handlers
 // ============================================
-
-function generateCostObjection(persona: B2BPersona): string {
-  const responses: Record<string, string[]> = {
-    'eiger-marvel-hr': [
-      `Look, we're a 13-person consultancy. Our budget is AED ${persona.budget}. Can you do payment terms? We've been burned before by hidden costs.`,
-      `AED ${persona.budget.split('-')[1] || '80k'} is our max. What's the total cost of ownership? License, implementation, training, support - I need the full breakdown.`,
-      `We don't have budget right now for a full system. Do you have a phased approach? Maybe start with recruitment module only?`
-    ],
-    'sgc-tech-ai': [
-      `AED ${persona.budget} is approved, but I need to see the ROI calculator first. How long until we break even? Show me the numbers.`,
-      `We're looking at 3 vendors. Your price needs to be competitive. What's the total cost including AI training and API documentation?`,
-      `Budget isn't the issue - it's value. Can you guarantee AED 200k additional revenue within 6 months of using your AI agents?`
-    ]
-  };
-  
-  const options = responses[persona.company] || responses['eiger-marvel-hr'];
-  return options[Math.floor(Math.random() * options.length)];
-}
-
-function generateTimelineObjection(persona: B2BPersona): string {
-  const responses: Record<string, string[]> = {
-    'eiger-marvel-hr': [
-      `You say 14 days, but our last ERP took 6 months. How can you guarantee 14-day deployment? What if something goes wrong?`,
-      `We can't afford disruption. Our recruitment is running 50+ placements right now. Can you do a phased rollout without stopping operations?`,
-      `14 days sounds too good to be true. What's the catch? Will the system be stable? Can we get a money-back guarantee?`
-    ],
-    'sgc-tech-ai': [
-      `Our clients can't wait 3 months for AI automation. Can you show me a working POC within 2 weeks?`,
-      `We need to win 3 enterprise deals by Q3. How fast can you deploy AI customer support? I need production-ready, not beta.`,
-      `Timeline is critical. SAP takes 6 months, Microsoft takes 4. You say 14 days - prove it with a demo deployment.`
-    ]
-  };
-  
-  const options = responses[persona.company] || responses['eiger-marvel-hr'];
-  return options[Math.floor(Math.random() * options.length)];
-}
-
-function generateQualityObjection(persona: B2BPersona): string {
-  const responses: Record<string, string[]> = {
-    'eiger-marvel-hr': [
-      `We tried an ERP before - it was too complex, our staff couldn't use it. What makes yours different? Give me 3 UAE references I can call.`,
-      `I need proof. Show me a case study of a similar HR consultancy that went live in 14 days. Who else in Dubai is using this?`,
-      `Our last vendor disappeared after implementation. How do I know you'll be here in 2 years? What's your support SLA?`
-    ],
-    'sgc-tech-ai': [
-      `I've seen 20+ AI demos. Most can't handle production workloads. Show me your API docs, tell me about rate limits, data encryption standards.`,
-      `We need enterprise-grade reliability. Can your AI handle 100k+ transactions daily? What's your uptime SLA? Show me your ISO 27001 certification.`,
-      `Talk is cheap. Give me access to a sandbox environment for 48 hours. I want my technical team to test every API endpoint.`
-    ]
-  };
-  
-  const options = responses[persona.company] || responses['eiger-marvel-hr'];
-  return options[Math.floor(Math.random() * options.length)];
-}
-
-function generateCompetitionObjection(persona: B2BPersona): string {
-  const responses: Record<string, string[]> = {
-    'eiger-marvel-hr': [
-      `We're also talking to a larger consultancy that uses SAP. They've been in UAE for 20 years. Why should we choose you over them?`,
-      `Microsoft Dynamics offered us a similar package for AED 20k less. What's your differentiator? Why pay more for Odoo?`
-    ],
-    'sgc-tech-ai': [
-      `We're evaluating SAP, Oracle, and Microsoft's AI stack. Why should we build on Odoo instead? Convince me technically.`,
-      `I have proposals from 3 AI companies. Yours is the most expensive. What am I getting extra for the premium price?`
-    ]
-  };
-  
-  const options = responses[persona.company] || responses['eiger-marvel-hr'];
-  return options[Math.floor(Math.random() * options.length)];
-}
 
 function generatePositiveResponse(persona: B2BPersona): string {
   const responses: Record<string, string[]> = {

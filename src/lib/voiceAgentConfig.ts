@@ -150,20 +150,6 @@ export const VOICE_AGENTS: VoiceAgent[] = [
     fallbackVoice: 'en-US-JennyNeural',
     deepgramVoice: 'aura-2-lyra-en-gb' // Deepgram: Sophisticated, professional (CFO persona)
   },
-  
-  {
-    id: 'leda-hr-finance',
-    name: 'Leda',
-    voice: 'Leda',
-    gender: 'female',
-    accent: 'American',
-    personality: 'CFO mindset, budget-conscious',
-    stylePrompt: 'Speak with CFO mindset. Say "Show me the ROI calculator" and "We need 90-day payment terms". Demand money-back guarantee and detailed cost breakdown.',
-    useCase: ['finance-decider', 'budget-conscious', 'roi-focused'],
-    targetCompany: 'eiger-marvel-hr',
-    targetPersonaTypes: ['finance-decider'],
-    fallbackVoice: 'en-US-JennyNeural'
-  },
 
   // SGC TECH AI
   {
