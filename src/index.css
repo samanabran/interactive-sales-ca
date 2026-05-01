@@ -340,3 +340,145 @@
 }
 .company-gradient-bg    { background: var(--company-gradient); }
 
+/*
+  ============================================
+  CONTRAST-AWARE TEXT SYSTEM
+  ============================================
+  Uses CSS oklch relative color syntax + clamp math
+  to automatically pick black or white text
+  based on background luminance.
+
+  WCAG threshold: L=0.623 in oklch
+    L > 0.623 → dark text (black)  → readable on light bg
+    L < 0.623 → light text (white) → readable on dark bg
+
+  Usage:
+    1. Set --bg on the element (or parent)
+    2. Add class="text-auto" to get automatic contrast color
+
+  Examples:
+    <div class="text-auto" style="--bg: #3B82F6">Auto white text on blue</div>
+    <div class="text-auto" style="--bg: #DBEAFE">Auto dark text on light blue</div>
+    <span class="badge-contrast">Badge auto-contrast</span>
+  ============================================
+*/
+
+@layer utilities {
+
+  /* ─── Core contrast utility ─────────────────────────────── */
+  /* Set --bg on this element or any ancestor, get auto-contrast text */
+  .text-auto {
+    color: oklch(
+      from var(--bg, var(--foreground))
+      clamp(0, (0.623 - l) * 10000, 1)
+      0 0
+    );
+  }
+
+  /* ─── Self-contained surface blocks ─────────────────────── */
+  /* Set --bg AND get matching text in one class */
+  .surface-auto {
+    background-color: var(--bg);
+    color: oklch(
+      from var(--bg, var(--background))
+      clamp(0, (0.623 - l) * 10000, 1)
+      0 0
+    );
+  }
+
+  /* ─── Named surface shorthands ──────────────────────────── */
+  /* Use these on containers, children inherit --bg */
+  .bg-surface-primary   { --bg: var(--primary); }
+  .bg-surface-secondary { --bg: var(--secondary); }
+  .bg-surface-accent    { --bg: var(--accent); }
+  .bg-surface-muted     { --bg: var(--muted); }
+  .bg-surface-success   { --bg: var(--success); }
+  .bg-surface-warning   { --bg: var(--warning); }
+  .bg-surface-destructive { --bg: var(--destructive); }
+
+  /* Company brand surfaces */
+  .bg-surface-eiger-primary { --bg: var(--eiger-primary); }
+  .bg-surface-eiger-dark    { --bg: var(--eiger-primary-dark); }
+  .bg-surface-eiger-light   { --bg: var(--eiger-muted); }
+  .bg-surface-sgc-primary   { --bg: var(--sgc-primary); }
+  .bg-surface-sgc-dark      { --bg: var(--sgc-primary-dark); }
+  .bg-surface-sgc-light     { --bg: var(--sgc-muted); }
+  .bg-surface-company       { --bg: var(--company-primary); }
+
+  /* ─── Tailwind blue/green/yellow/red scale bridging ─────── */
+  /* Maps common Tailwind bg-* classes to --bg for contrast resolution */
+  .bg-blue-50  { --bg: oklch(0.97 0.013 254); }
+  .bg-blue-100 { --bg: oklch(0.93 0.032 255); }
+  .bg-blue-200 { --bg: oklch(0.88 0.060 254); }
+  .bg-blue-300 { --bg: oklch(0.81 0.100 252); }
+  .bg-blue-400 { --bg: oklch(0.71 0.143 254); }
+  .bg-blue-500 { --bg: oklch(0.62 0.178 255); }
+  .bg-blue-600 { --bg: oklch(0.55 0.192 262); }
+  .bg-blue-700 { --bg: oklch(0.49 0.172 264); }
+  .bg-blue-800 { --bg: oklch(0.42 0.142 267); }
+  .bg-blue-900 { --bg: oklch(0.37 0.113 268); }
+
+  .bg-green-50  { --bg: oklch(0.98 0.018 155); }
+  .bg-green-100 { --bg: oklch(0.96 0.044 156); }
+  .bg-green-200 { --bg: oklch(0.91 0.088 155); }
+  .bg-green-300 { --bg: oklch(0.84 0.142 160); }
+  .bg-green-400 { --bg: oklch(0.75 0.180 160); }
+  .bg-green-500 { --bg: oklch(0.65 0.185 160); }
+  .bg-green-600 { --bg: oklch(0.58 0.165 160); }
+  .bg-green-700 { --bg: oklch(0.50 0.143 161); }
+  .bg-green-800 { --bg: oklch(0.43 0.118 161); }
+  .bg-green-900 { --bg: oklch(0.36 0.095 162); }
+
+  .bg-emerald-50  { --bg: oklch(0.98 0.021 166); }
+  .bg-emerald-100 { --bg: oklch(0.95 0.052 163); }
+  .bg-emerald-500 { --bg: oklch(0.66 0.179 162); }
+  .bg-emerald-600 { --bg: oklch(0.59 0.160 163); }
+  .bg-emerald-900 { --bg: oklch(0.36 0.100 166); }
+
+  .bg-yellow-50  { --bg: oklch(0.99 0.022 95); }
+  .bg-yellow-100 { --bg: oklch(0.97 0.060 95); }
+  .bg-yellow-200 { --bg: oklch(0.95 0.107 95); }
+  .bg-yellow-400 { --bg: oklch(0.87 0.180 95); }
+  .bg-yellow-500 { --bg: oklch(0.80 0.195 94); }
+
+  .bg-amber-50  { --bg: oklch(0.99 0.020 82); }
+  .bg-amber-100 { --bg: oklch(0.96 0.052 84); }
+  .bg-amber-500 { --bg: oklch(0.77 0.180 71); }
+  .bg-amber-700 { --bg: oklch(0.61 0.161 63); }
+
+  .bg-red-50  { --bg: oklch(0.97 0.018 17); }
+  .bg-red-100 { --bg: oklch(0.94 0.040 17); }
+  .bg-red-500 { --bg: oklch(0.63 0.228 23); }
+  .bg-red-600 { --bg: oklch(0.58 0.218 22); }
+
+  .bg-gray-50  { --bg: oklch(0.98 0.002 247); }
+  .bg-gray-100 { --bg: oklch(0.96 0.003 248); }
+  .bg-gray-200 { --bg: oklch(0.93 0.004 255); }
+  .bg-gray-500 { --bg: oklch(0.71 0.008 250); }
+  .bg-gray-700 { --bg: oklch(0.52 0.008 252); }
+  .bg-gray-800 { --bg: oklch(0.41 0.008 250); }
+  .bg-gray-900 { --bg: oklch(0.32 0.007 251); }
+
+  .bg-white { --bg: oklch(1 0 0); }
+  .bg-black { --bg: oklch(0 0 0); }
+
+  /* ─── Semantic pairs (bg + text together) ───────────────── */
+  /* Apply to one element to get both bg color and auto contrast text */
+  .theme-primary     { background: var(--primary);     color: var(--primary-foreground); }
+  .theme-secondary   { background: var(--secondary);   color: var(--secondary-foreground); }
+  .theme-accent      { background: var(--accent);       color: var(--accent-foreground); }
+  .theme-muted       { background: var(--muted);        color: var(--muted-foreground); }
+  .theme-success     { background: var(--success);      color: var(--success-foreground); }
+  .theme-warning     { background: var(--warning);      color: var(--warning-foreground); }
+  .theme-destructive { background: var(--destructive);  color: var(--destructive-foreground); }
+
+  /* ─── Badge contrast helpers ─────────────────────────────── */
+  /* Use these instead of manual text-* on colored badges */
+  .badge-auto {
+    color: oklch(
+      from var(--bg, var(--primary))
+      clamp(0, (0.623 - l) * 10000, 1)
+      0 0
+    );
+  }
+}

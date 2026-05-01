@@ -120,7 +120,7 @@ export function useRolePlaySession({
   const [isTyping, setIsTyping] = useState(false);
   const [showSetup, setShowSetup] = useState(true);
   const [ttsEnabled, setTtsEnabled] = useState(true);
-  const [ttsProvider, setTtsProvider] = useState<TTSProvider>('gemini');
+  const [ttsProvider, setTtsProvider] = useState<TTSProvider>('deepgram');
   const [sessionMetrics, setSessionMetrics] = useState<SessionMetrics | null>(null);
   const [currentStage, setCurrentStage] = useState('greeting');
   const [objectionsHandled, setObjectionsHandled] = useState<string[]>([]);
@@ -186,7 +186,14 @@ export function useRolePlaySession({
     setIsSpeaking(true);
     try {
       const provider = ttsProviderRef.current;
-      if (provider === 'gemini') {
+      if (provider === 'deepgram') {
+        if (!deepgramService.isAvailable()) {
+          toast.error('Deepgram API key not configured. Set VITE_DEEPGRAM_API_KEY in .env');
+          setIsSpeaking(false);
+          return;
+        }
+        await deepgramService.playText(text, { model: voiceAgent.deepgramVoice ?? 'aura-2-asteria-en' });
+      } else if (provider === 'gemini') {
         await geminiTTS.playText(text, {
           voice: voiceAgent.voice,
           stylePrompt: voiceAgent.stylePrompt,
@@ -194,22 +201,14 @@ export function useRolePlaySession({
         });
       } else if (provider === 'edge') {
         await edgeTTS.playText(text, voiceAgent.fallbackVoice ?? 'en-US-AriaNeural');
-      } else if (provider === 'deepgram') {
-        if (!deepgramService.isAvailable()) {
-          toast.error('Deepgram API key not configured.');
-          setIsSpeaking(false);
-          return;
-        }
-        await deepgramService.playText(text, { model: voiceAgent.deepgramVoice ?? 'aura-2-asteria-en' });
       }
     } catch {
-      // Fallback: try Edge TTS if primary failed
-      if (ttsProviderRef.current === 'gemini') {
-        try {
-          const voiceAgent = getVoiceAgentForB2BPersona(persona.company, persona.type as B2BPersonaType);
+      // Fallback chain: try Edge TTS on any failure
+      try {
+        if (ttsProviderRef.current !== 'edge') {
           await edgeTTS.playText(text, voiceAgent.fallbackVoice ?? 'en-US-AriaNeural');
-        } catch { /* silent */ }
-      }
+        }
+      } catch { /* silent */ }
     } finally {
       setIsSpeaking(false);
     }

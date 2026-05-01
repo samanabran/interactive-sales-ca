@@ -58,6 +58,11 @@ export default function EigerMarvelRolePlay() {
   });
 
   const stageHint = EIGER_MARVEL_CALL_FLOW[session.currentStage as keyof typeof EIGER_MARVEL_CALL_FLOW];
+  const interpolateHint = (script: string) =>
+    script
+      .replace(/\[NAME\]/g, session.selectedPersona?.name ?? 'Prospect')
+      .replace(/\[YOUR_NAME\]/g, 'You')
+      .replace(/\[ROLE\]/g, session.selectedPersona?.title ?? 'the role');
   const currentObjId = session.currentMessage ? detectObjectionType(session.currentMessage) : null;
   const objCoach = currentObjId ? getBestResponse(currentObjId) : null;
 
@@ -350,7 +355,7 @@ export default function EigerMarvelRolePlay() {
             <div className="mx-3 mb-2 p-2 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
               <Info className="h-3 w-3 text-blue-500 mt-0.5 shrink-0" />
               <p className="text-xs text-blue-700 line-clamp-2">
-                <span className="font-bold">Current stage hint:</span> {(stageHint as { script: string }).script.substring(0, 120)}...
+                <span className="font-bold">Current stage hint:</span> {interpolateHint((stageHint as { script: string }).script).substring(0, 120)}...
               </p>
             </div>
           )}

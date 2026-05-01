@@ -19,7 +19,7 @@ class MistralService {
 
   constructor(config: MistralConfig = {}) {
     this.config = {
-      apiKey: config.apiKey || '', // Mistral free tier doesn't always need a key for small requests
+      apiKey: config.apiKey || import.meta.env.VITE_MISTRAL_API_KEY || '',
       model: config.model || 'mistral-small-latest', // Free tier model
       baseUrl: config.baseUrl || 'https://api.mistral.ai/v1',
       temperature: config.temperature ?? 0.9,

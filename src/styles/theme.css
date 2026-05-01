@@ -1,0 +1,14 @@
+/* Theme CSS - Company-specific design tokens */
+/* EIGER MARVEL HR (Blue) + SGC TECH AI (Green) */
+
+:root {
+  --eiger-primary: #3B82F6;
+  --eiger-primary-dark: #1D4ED8;
+  --eiger-accent: #60A5FA;
+  --eiger-bg: #EFF6FF;
+
+  --sgc-primary: #10B981;
+  --sgc-primary-dark: #047857;
+  --sgc-accent: #34D399;
+  --sgc-bg: #ECFDF5;
+}

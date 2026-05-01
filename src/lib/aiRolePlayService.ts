@@ -12,6 +12,7 @@ import {
 import { CompanyType } from './companySelector';
 import { detectObjectionType, getBestResponse as getEigerBestResponse } from './objections/eigerMarvelObjections';
 import { detectTechObjectionType, getTechBestResponse } from './objections/sdcTechAIObjections';
+import { mistralService } from './mistralService';
 
 export type { B2BPersonaType } from './b2bPersonas';
 
@@ -61,21 +62,48 @@ export interface ConversationContext {
 }
 
 /**
- * Generate realistic B2B prospect response
+ * Generate realistic B2B prospect response using Mistral AI with local fallback
  */
 export async function generateProspectResponse(
   context: ConversationContext,
   userMessage: string
 ): Promise<string> {
-  
   const persona = getPersonaByType(context.company, context.personaType);
   if (!persona) {
     return "I'm not sure I understand. Can you tell me more about your solution?";
   }
-  
-  // Generate response based on persona
-  const response = generateB2BResponse(persona, userMessage);
 
+  const companyName = context.company === 'eiger-marvel-hr' ? 'EIGER MARVEL HR' : 'SGC TECH AI';
+  const systemPrompt = `You are ${persona.name}, ${persona.title} at ${companyName} in the UAE.
+Goals: ${persona.goals.slice(0, 2).join('; ')}.
+Pain points: ${persona.painPoints.slice(0, 2).join('; ')}.
+Concerns: ${persona.concerns.slice(0, 2).join('; ')}.
+Budget: ${persona.budget}. Skepticism level: ${persona.personality.skeptical}/10.
+RULES: Stay in character. Respond in 1-3 sentences. Raise realistic B2B objections. Reference UAE context (AED, WPS compliance) where relevant. Never say you are an AI.`;
+
+  const chatMessages = [
+    { role: 'system' as const, content: systemPrompt },
+    ...context.messages
+      .filter(m => m.role !== 'system')
+      .slice(-6) // last 6 messages for context
+      .map(m => ({
+        role: (m.role === 'prospect' ? 'assistant' : 'user') as 'assistant' | 'user',
+        content: m.content,
+      })),
+    { role: 'user' as const, content: userMessage },
+  ];
+
+  try {
+    const aiResponse = await mistralService.chatCompletion(chatMessages);
+    if (aiResponse && aiResponse.length > 10) {
+      return applyTalkativeStyle(aiResponse, persona.personality.talkative);
+    }
+  } catch {
+    // fall through to local generation
+  }
+
+  // Local fallback
+  const response = generateB2BResponse(persona, userMessage);
   return applyTalkativeStyle(response, persona.personality.talkative);
 }
 

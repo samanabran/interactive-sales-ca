@@ -41,8 +41,8 @@ export class DeepgramService {
   async generateSpeech(text: string, options: DeepgramTTSOptions = {}): Promise<Blob> {
     const {
       model = 'aura-2-asteria-en', // Default: clear, confident, enthusiastic
-      encoding = 'linear16',             // WAV format for Whisper compatibility
-      sampleRate = 16000                 // 16kHz for STT compatibility
+      encoding = 'mp3',            // MP3 for browser Audio compatibility
+      sampleRate = 24000           // 24kHz for good quality
     } = options;
 
     if (!this.apiKey) {

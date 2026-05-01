@@ -60,6 +60,11 @@ export default function SDCTechAIRolePlay() {
   });
 
   const stageHint = SDC_TECH_AI_CALL_FLOW[session.currentStage as keyof typeof SDC_TECH_AI_CALL_FLOW];
+  const interpolateHint = (script: string) =>
+    script
+      .replace(/\[NAME\]/g, session.selectedPersona?.name ?? 'Prospect')
+      .replace(/\[YOUR_NAME\]/g, 'You')
+      .replace(/\[ROLE\]/g, session.selectedPersona?.title ?? 'the role');
   const currentObjId = session.currentMessage ? detectTechObjectionType(session.currentMessage) : null;
   const objCoach = currentObjId ? getTechBestResponse(currentObjId) : null;
 
@@ -350,7 +355,7 @@ export default function SDCTechAIRolePlay() {
             <div className="mx-3 mb-2 p-2 bg-emerald-50 border border-emerald-200 rounded-lg flex items-start gap-2">
               <Info className="h-3 w-3 text-emerald-500 mt-0.5 shrink-0" />
               <p className="text-xs text-emerald-700 line-clamp-2">
-                <span className="font-bold">Stage hint:</span> {(stageHint as { script: string }).script.substring(0, 120)}...
+                <span className="font-bold">Stage hint:</span> {interpolateHint((stageHint as { script: string }).script).substring(0, 120)}...
               </p>
             </div>
           )}
