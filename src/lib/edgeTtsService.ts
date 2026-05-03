@@ -1,7 +1,7 @@
 /**
  * Edge TTS Service - Free Text-to-Speech using Microsoft Edge TTS
  * No API key required - 200+ voices available
- * Server endpoint: http://localhost:5050 (Contabo TTS server)
+ * Server URL stored in localStorage so users set it once without redeployment
  */
 
 export interface EdgeTTSOptions {
@@ -12,11 +12,34 @@ export interface EdgeTTSOptions {
 }
 
 export class EdgeTTSService {
-  private baseUrl: string;
+  static readonly STORAGE_KEY = 'edge_tts_url';
 
-  constructor(baseUrl: string = 'http://localhost:5050') {
-    this.baseUrl = baseUrl;
+  static getServerUrl(): string {
+    if (typeof localStorage !== 'undefined') {
+      const stored = localStorage.getItem(EdgeTTSService.STORAGE_KEY);
+      if (stored) return stored;
+    }
+    return import.meta.env.VITE_TTS_SERVER_URL || '';
   }
+
+  static saveServerUrl(url: string): void {
+    localStorage.setItem(EdgeTTSService.STORAGE_KEY, url.trim().replace(/\/$/, ''));
+  }
+
+  static clearServerUrl(): void {
+    localStorage.removeItem(EdgeTTSService.STORAGE_KEY);
+  }
+
+  static isAvailable(): boolean {
+    return !!EdgeTTSService.getServerUrl();
+  }
+
+  private get baseUrl(): string {
+    return EdgeTTSService.getServerUrl();
+  }
+
+  constructor() {}
+
 
   /**
    * Generate speech from text using Edge TTS (free)
@@ -33,6 +56,7 @@ export class EdgeTTSService {
     } = options;
 
     try {
+      if (!this.baseUrl) throw new Error('Edge TTS server URL not configured');
       const response = await fetch(`${this.baseUrl}/v1/audio/speech`, {
         method: 'POST',
         headers: {
@@ -105,23 +129,18 @@ export class EdgeTTSService {
   }
 
   /**
-   * Get recommended voices for different personas
+   * Get recommended voices for different B2B personas
    */
-  getPersonaVoices(): Record<string, string[]> {
+  getPersonaVoices(): Record<string, string> {
     return {
-      'eager-student': ['en-US-AriaNeural', 'en-US-DavisNeural'],
-      'skeptical-parent': ['en-GB-SoniaNeural', 'en-GB-RyanNeural'],
-      'price-sensitive': ['en-US-JennyNeural', 'en-US-TonyNeural'],
-      'busy-professional': ['en-US-SaraNeural', 'en-US-BrandonNeural'],
-      'friendly-neighbor': ['en-AU-NatashaNeural', 'en-AU-WilliamNeural'],
-      'technical-expert': ['en-IN-NeerjaNeural', 'en-IN-PrabhatNeural'],
-      'urgent-buyer': ['en-US-EmmaNeural', 'en-US-AndrewNeural'],
-      'silent-type': ['en-US-AnaNeural', 'en-US-GuyNeural']
+      'hr-manager':        'en-AE-HamdanNeural',      // Male Arabic-accented English (UAE)
+      'business-owner':    'en-US-AriaNeural',         // Female, warm
+      'finance-decider':   'en-GB-SoniaNeural',        // Female, British, authoritative
+      'it-manager':        'en-US-AndrewNeural',       // Male, clear
+      'operations-manager':'en-AU-NatashaNeural',      // Female, professional
+      'default':           'en-US-JennyNeural',        // Neutral fallback
     };
   }
 }
 
-// Export singleton instance
-export const edgeTTS = new EdgeTTSService(
-  import.meta.env.VITE_TTS_SERVER_URL || 'http://localhost:5050'
-);
+export const edgeTTS = new EdgeTTSService();

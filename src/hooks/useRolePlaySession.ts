@@ -13,7 +13,7 @@ import {
 import { getVoiceAgentForB2BPersona } from '@/lib/voiceAgentConfig';
 import { geminiTTS } from '@/lib/geminiTTSService';
 import { kokoroTTS } from '@/lib/kokoroTTSService';
-import { edgeTTS } from '@/lib/edgeTtsService';
+import { edgeTTS, EdgeTTSService } from '@/lib/edgeTtsService';
 import { deepgramService } from '@/lib/deepgramService';
 import type { B2BPersona } from '@/lib/b2bPersonas';
 import type { CompanyType } from '@/lib/companySelector';
@@ -122,14 +122,16 @@ export function useRolePlaySession({
   const [showSetup, setShowSetup] = useState(true);
   const [ttsEnabled, setTtsEnabled] = useState(true);
   const [ttsProvider, setTtsProvider] = useState<TTSProvider>(() => {
-    // Auto-detect best available provider from environment variables
-    const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    // Auto-detect best available provider (Edge TTS priority — no Google)
+    const edgeUrl =
+      (typeof localStorage !== 'undefined' && localStorage.getItem('edge_tts_url')) ||
+      import.meta.env.VITE_TTS_SERVER_URL;
     const kokoroUrl = import.meta.env.VITE_KOKORO_TTS_URL;
     const deepgramKey = import.meta.env.VITE_DEEPGRAM_API_KEY;
-    if (geminiKey) return 'gemini';
+    if (edgeUrl) return 'edge';
     if (kokoroUrl) return 'kokoro';
     if (deepgramKey) return 'deepgram';
-    return 'edge';
+    return 'edge'; // browser speechSynthesis as last resort
   });
   const [sessionMetrics, setSessionMetrics] = useState<SessionMetrics | null>(null);
   const [currentStage, setCurrentStage] = useState('greeting');
@@ -205,16 +207,11 @@ export function useRolePlaySession({
 
     setIsSpeaking(true);
     try {
-      const provider = ttsProviderRef.current;
-
-      // 1. Gemini TTS (highest quality, requires API key)
-      if (provider === 'gemini' && geminiTTS.isAvailable()) {
+      // 1. Edge TTS (Microsoft Neural — free, human-like, no API key)
+      if (EdgeTTSService.isAvailable()) {
         try {
-          await geminiTTS.playText(text, {
-            voice: voiceAgent.voice,
-            stylePrompt: voiceAgent.stylePrompt,
-            temperature: 0.8,
-          });
+          const voice = edgeTTS.getPersonaVoices()[persona.type] ?? voiceAgent.fallbackVoice ?? 'en-US-AriaNeural';
+          await edgeTTS.playText(text, voice);
           return;
         } catch { /* fall through */ }
       }
@@ -227,7 +224,7 @@ export function useRolePlaySession({
         } catch { /* fall through */ }
       }
 
-      // 3. Deepgram Aura-2 (very good, requires API key)
+      // 3. Deepgram Aura-2 (professional backup)
       if (deepgramService.isAvailable()) {
         try {
           await deepgramService.playText(text, { model: voiceAgent.deepgramVoice ?? 'aura-2-asteria-en' });
@@ -235,13 +232,7 @@ export function useRolePlaySession({
         } catch { /* fall through */ }
       }
 
-      // 4. Edge TTS (good quality, HTTP — may be blocked on HTTPS)
-      try {
-        await edgeTTS.playText(text, voiceAgent.fallbackVoice ?? 'en-US-AriaNeural');
-        return;
-      } catch { /* fall through */ }
-
-      // 5. Browser speechSynthesis (guaranteed, robotic)
+      // 4. Browser speechSynthesis (guaranteed, robotic)
       browserFallback();
     } catch {
       browserFallback();
