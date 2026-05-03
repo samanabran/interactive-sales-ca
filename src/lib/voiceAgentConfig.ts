@@ -18,8 +18,9 @@ export interface VoiceAgent {
   useCase: string[];
   targetCompany: CompanyType | 'both';
   targetPersonaTypes: B2BPersonaType[];
-  fallbackVoice?: string; // Edge TTS backup
+  fallbackVoice?: string;  // Edge TTS backup
   deepgramVoice?: string;
+  kokoroVoice?: string;    // Kokoro TTS (self-hosted, free)
 }
 
 // ============================================
@@ -31,7 +32,7 @@ export const VOICE_AGENTS: VoiceAgent[] = [
   {
     id: 'orion-hr-manager',
     name: 'Orion',
-    voice: 'Charon',  // Gemini: Professional, informative male
+    voice: 'Charon',
     gender: 'male',
     accent: 'American',
     personality: 'Pragmatic HR Operations Manager, practical and time-conscious',
@@ -40,12 +41,13 @@ export const VOICE_AGENTS: VoiceAgent[] = [
     targetCompany: 'eiger-marvel-hr',
     targetPersonaTypes: ['hr-manager'],
     fallbackVoice: 'en-US-GuyNeural',
-    deepgramVoice: 'aura-2-orion-en'
+    deepgramVoice: 'aura-2-orion-en',
+    kokoroVoice: 'am_michael',  // Measured, professional American male
   },
   {
     id: 'solomon-hr-finance',
     name: 'Solomon',
-    voice: 'Algenib',  // Gemini: Gravelly, authoritative male - perfect for finance authority
+    voice: 'Algenib',
     gender: 'male',
     accent: 'American',
     personality: 'Wise, authoritative finance decision-maker with deep experience',
@@ -54,13 +56,13 @@ export const VOICE_AGENTS: VoiceAgent[] = [
     targetCompany: 'eiger-marvel-hr',
     targetPersonaTypes: ['finance-decider'],
     fallbackVoice: 'en-US-GuyNeural',
-    deepgramVoice: 'aura-2-arcas-en'  // Warm, measured - good for finance authority
+    deepgramVoice: 'aura-2-arcas-en',
+    kokoroVoice: 'bm_george',   // Deep, authoritative British male
   },
-  
   {
     id: 'puck-hr-skeptical',
     name: 'Puck',
-    voice: 'Puck',  // Gemini: Upbeat but thoughtful - disarming skeptic
+    voice: 'Puck',
     gender: 'male',
     accent: 'American',
     personality: 'Skeptical business owner burned by past ERP failures',
@@ -69,13 +71,13 @@ export const VOICE_AGENTS: VoiceAgent[] = [
     targetCompany: 'eiger-marvel-hr',
     targetPersonaTypes: ['finance-decider'],
     fallbackVoice: 'en-US-DavisNeural',
-    deepgramVoice: 'aura-2-arcas-en'
+    deepgramVoice: 'aura-2-arcas-en',
+    kokoroVoice: 'am_adam',     // Deep, slightly skeptical American male
   },
-  
   {
     id: 'orus-hr-efficient',
     name: 'Orus',
-    voice: 'Orus',  // Gemini: Firm, efficient male - results-driven
+    voice: 'Orus',
     gender: 'male',
     accent: 'American',
     personality: 'Efficiency-driven HR Manager who values speed and results above all',
@@ -84,14 +86,15 @@ export const VOICE_AGENTS: VoiceAgent[] = [
     targetCompany: 'eiger-marvel-hr',
     targetPersonaTypes: ['hr-manager'],
     fallbackVoice: 'en-US-BrandonNeural',
-    deepgramVoice: 'aura-2-orion-en'
+    deepgramVoice: 'aura-2-orion-en',
+    kokoroVoice: 'am_michael',  // Crisp, professional American male
   },
 
   // ===== SGC TECH AI (IT/Software) =====
   {
     id: 'algenib-tech-expert',
     name: 'Algenib',
-    voice: 'Algenib',  // Gemini: Gravelly, analytical male - perfect for technical authority
+    voice: 'Algenib',
     gender: 'male',
     accent: 'American',
     personality: 'Highly experienced IT Director, analytical and technically authoritative',
@@ -100,13 +103,13 @@ export const VOICE_AGENTS: VoiceAgent[] = [
     targetCompany: 'sgc-tech-ai',
     targetPersonaTypes: ['it-manager'],
     fallbackVoice: 'en-US-AndrewNeural',
-    deepgramVoice: 'aura-2-zeus-en'
+    deepgramVoice: 'aura-2-zeus-en',
+    kokoroVoice: 'bm_george',   // Authoritative British male - technical authority
   },
-  
   {
     id: 'mintaka-tech-urgent',
     name: 'Mintaka',
-    voice: 'Mintaka',  // Gemini: Deep, urgent male - CEO energy
+    voice: 'Mintaka',
     gender: 'male',
     accent: 'American',
     personality: 'Visionary startup CEO with urgency about AI competitive advantage',
@@ -115,13 +118,13 @@ export const VOICE_AGENTS: VoiceAgent[] = [
     targetCompany: 'sgc-tech-ai',
     targetPersonaTypes: ['business-owner'],
     fallbackVoice: 'en-US-AndrewNeural',
-    deepgramVoice: 'aura-2-zeus-en'
+    deepgramVoice: 'aura-2-zeus-en',
+    kokoroVoice: 'bm_lewis',    // Energetic British male - CEO drive
   },
-  
   {
     id: 'fenrir-tech-practical',
     name: 'Fenrir',
-    voice: 'Fenrir',  // Gemini: Excitable but grounded male - practical ops
+    voice: 'Fenrir',
     gender: 'male',
     accent: 'American',
     personality: 'Practical, delivery-focused Operations Manager focused on what actually works',
@@ -130,16 +133,17 @@ export const VOICE_AGENTS: VoiceAgent[] = [
     targetCompany: 'sgc-tech-ai',
     targetPersonaTypes: ['operations-manager'],
     fallbackVoice: 'en-US-TonyNeural',
-    deepgramVoice: 'aura-2-orion-en'
+    deepgramVoice: 'aura-2-orion-en',
+    kokoroVoice: 'am_adam',     // Deep, grounded American male
   },
 
   // ===== FEMALE VOICES =====
-   
+
   // EIGER MARVEL HR
   {
     id: 'leda-hr-finance',
     name: 'Leda',
-    voice: 'Leda',  // Gemini: Youthful but sharp female - CFO persona
+    voice: 'Leda',
     gender: 'female',
     accent: 'American',
     personality: 'Sharp CFO with tight budget and high standards for ROI',
@@ -148,14 +152,15 @@ export const VOICE_AGENTS: VoiceAgent[] = [
     targetCompany: 'eiger-marvel-hr',
     targetPersonaTypes: ['finance-decider'],
     fallbackVoice: 'en-US-JennyNeural',
-    deepgramVoice: 'aura-2-luna-en'
+    deepgramVoice: 'aura-2-luna-en',
+    kokoroVoice: 'af_sarah',    // Calm, authoritative American female - CFO energy
   },
 
   // SGC TECH AI
   {
     id: 'zeus-tech-director',
     name: 'Zeus',
-    voice: 'Alnilam',  // Gemini: Firm, authoritative male - technical director
+    voice: 'Alnilam',
     gender: 'male',
     accent: 'American',
     personality: 'Authoritative Technical Director responsible for all infrastructure decisions',
@@ -164,12 +169,13 @@ export const VOICE_AGENTS: VoiceAgent[] = [
     targetCompany: 'sgc-tech-ai',
     targetPersonaTypes: ['it-manager'],
     fallbackVoice: 'en-US-GuyNeural',
-    deepgramVoice: 'aura-2-zeus-en'
+    deepgramVoice: 'aura-2-zeus-en',
+    kokoroVoice: 'bm_george',   // Deep British authority - senior director
   },
   {
     id: 'atlas-tech-ceo',
     name: 'Atlas',
-    voice: 'Mintaka',  // Gemini: Deep, decisive male - CEO authority
+    voice: 'Mintaka',
     gender: 'male',
     accent: 'American',
     personality: 'Confident CEO of a growing UAE tech company, strategic and decisive',
@@ -178,12 +184,13 @@ export const VOICE_AGENTS: VoiceAgent[] = [
     targetCompany: 'sgc-tech-ai',
     targetPersonaTypes: ['business-owner'],
     fallbackVoice: 'en-US-GuyNeural',
-    deepgramVoice: 'aura-2-zeus-en'
+    deepgramVoice: 'aura-2-zeus-en',
+    kokoroVoice: 'am_adam',     // Deep confident American male - CEO presence
   },
   {
     id: 'asteria-tech-operations',
     name: 'Asteria',
-    voice: 'Sulafat',  // Gemini: Warm, professional female - operations lead
+    voice: 'Sulafat',
     gender: 'female',
     accent: 'American',
     personality: 'Warm, collaborative Operations Manager focused on practical outcomes',
@@ -192,7 +199,8 @@ export const VOICE_AGENTS: VoiceAgent[] = [
     targetCompany: 'sgc-tech-ai',
     targetPersonaTypes: ['operations-manager'],
     fallbackVoice: 'en-US-AriaNeural',
-    deepgramVoice: 'aura-2-asteria-en'
+    deepgramVoice: 'aura-2-asteria-en',
+    kokoroVoice: 'af_heart',    // Warm, expressive American female
   }
 ];
 
