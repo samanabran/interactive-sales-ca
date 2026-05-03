@@ -7,7 +7,6 @@
 export interface EdgeTTSOptions {
   voice?: string;
   rate?: string;  // e.g., "+0%", "+50%", "-50%"
-  volume?: string;  // e.g., "+0%", "+100%"
   pitch?: string;  // e.g., "+0Hz", "+100Hz"
 }
 
@@ -51,25 +50,17 @@ export class EdgeTTSService {
     const {
       voice = 'en-US-AriaNeural',
       rate = '+0%',
-      volume = '+0%',
       pitch = '+0Hz'
     } = options;
 
     try {
       if (!this.baseUrl) throw new Error('Edge TTS server URL not configured');
-      const response = await fetch(`${this.baseUrl}/v1/audio/speech`, {
+      const response = await fetch(`${this.baseUrl}/tts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          model: 'edge-tts',  // OpenAI-compatible field (ignored by Edge TTS)
-          input: text,
-          voice: voice,
-          rate: rate,
-          volume: volume,
-          pitch: pitch
-        }),
+        body: JSON.stringify({ text, voice, rate, pitch }),
       });
 
       if (!response.ok) {
