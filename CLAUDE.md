@@ -213,11 +213,14 @@ When working on this project, ALWAYS load these skills:
 1. ✅ B2B Persona System (COMPLETE)
 2. ✅ Company Selection UI (COMPLETE)
 3. ✅ B2B Role-Play Component (COMPLETE)
-4. 🔄 Voice Player Utility (NEXT)
-5. 🔄 B2B Scenario Scripts
-6. 🔄 Mobile Call Recording & Transcription
-7. 🔄 Contabo Deployment Completion
-8. 🔄 End-to-End Testing
+4. ✅ Voice Player Utility (COMPLETE - `src/lib/voicePlayer.ts`)
+5. ✅ B2B Scenario Scripts (COMPLETE - `src/lib/b2bScenarios.ts`)
+6. ✅ Mobile Call Recording & Transcription (COMPLETE - `src/hooks/useMobileRecorder.ts`, `src/lib/transcriptionService.ts`)
+7. ✅ Repo Cleanup & CI/CD (COMPLETE - replaced Jekyll CI with Vite/TypeScript CI, fixed R2 deletion bug, removed hardcoded account ID)
+8. 🔄 Contabo Deployment (Docker Compose + Nginx TLS + Whisper STT)
+9. 🔄 Practice System Backend (`POST /api/practice/attempts`, `GET /api/practice/recommendations/:userId`)
+10. 🔄 Post-Call Analysis UI (`PostCallSummary.tsx` QA score, objection list, action items)
+11. 🔄 Analytics Dashboard (QA score trend chart using recharts)
 
 ## Session Continuation Context
 

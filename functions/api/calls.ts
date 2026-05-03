@@ -372,7 +372,7 @@ callRoutes.post('/:id/recording', async (c) => {
 callRoutes.post('/:id/transcribe', async (c) => {
   const auth = c.get('auth');
   const id = parseInt(c.req.param('id'));
-  const transcriptionService = new TranscriptionService(c.env.OPENAI_API_KEY);
+  const transcriptionSvc = createTranscriptionService(c.env);
 
   try {
     // Check if call exists and user has access
@@ -392,107 +392,141 @@ callRoutes.post('/:id/transcribe', async (c) => {
       return c.json({ error: 'No recording found for this call' }, 400);
     }
 
-    // Update call status to transcribing
+    // Update call status to processing
     await c.env.DB.prepare('UPDATE calls SET transcription_status = ? WHERE id = ?')
       .bind('processing', id)
       .run();
 
-    // Process transcription asynchronously
-    try {
-      const transcriptionResult = await transcriptionService.transcribeCall(
-        call.recording_url,
-        id,
-        call.lead_id
-      );
+    // Return 202 Accepted immediately; processing continues async
+    c.executionCtx?.waitUntil(
+      (async () => {
+        try {
+          // Normalize recording URL to an R2 object key.
+          // Recordings stored via the upload endpoint use route-based URLs (/api/recordings/<path>).
+          // Older recordings may already be stored as bare R2 keys (e.g. recordings/user/file.wav).
+          // Full HTTP URLs (e.g. from a previous public-bucket setup) are not supported; they will
+          // produce a failed status rather than silently return incorrect data.
+          const rawUrl = String(call.recording_url);
+          let recordingKey: string;
+          if (rawUrl.startsWith('/api/recordings/')) {
+            recordingKey = `recordings/${rawUrl.slice('/api/recordings/'.length)}`;
+          } else if (rawUrl.startsWith('recordings/')) {
+            recordingKey = rawUrl;
+          } else if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+            console.error(`Unsupported recording URL format for call ${id}: ${rawUrl}`);
+            await c.env.DB.prepare('UPDATE calls SET transcription_status = ? WHERE id = ?')
+              .bind('failed', id)
+              .run();
+            return;
+          } else {
+            // Best-effort: treat as a bare key
+            recordingKey = rawUrl;
+          }
 
-      // Store transcription results
-      await c.env.DB.prepare(`
-        UPDATE calls 
-        SET transcription = ?, 
-            transcription_status = ?,
-            sentiment_score = ?,
-            key_topics = ?,
-            action_items = ?,
-            next_steps = ?,
-            call_quality_score = ?,
-            transcription_summary = ?
-        WHERE id = ?
-      `).bind(
-        JSON.stringify(transcriptionResult.transcript),
-        'completed',
-        transcriptionResult.sentiment.score,
-        JSON.stringify(transcriptionResult.keyTopics),
-        JSON.stringify(transcriptionResult.actionItems),
-        JSON.stringify(transcriptionResult.nextSteps),
-        transcriptionResult.qualityScore,
-        transcriptionResult.summary,
-        id
-      ).run();
+          const r2Object = await c.env.RECORDINGS.get(recordingKey);
+          if (!r2Object) {
+            await c.env.DB.prepare('UPDATE calls SET transcription_status = ? WHERE id = ?')
+              .bind('failed', id)
+              .run();
+            return;
+          }
 
-      // Store segments
-      for (const segment of transcriptionResult.segments) {
-        await c.env.DB.prepare(`
-          INSERT INTO transcription_segments 
-          (call_id, segment_id, start_time, end_time, speaker, text, confidence)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
-        `).bind(
-          id,
-          segment.id,
-          segment.start,
-          segment.end,
-          segment.speaker,
-          segment.text,
-          segment.confidence
-        ).run();
-      }
+          const audioBuffer = await r2Object.arrayBuffer();
 
-      // Store analytics
-      await c.env.DB.prepare(`
-        INSERT INTO call_analytics 
-        (call_id, talk_time_ratio, interruptions, speaking_pace, sentiment_trend, engagement_score)
-        VALUES (?, ?, ?, ?, ?, ?)
-      `).bind(
-        id,
-        transcriptionResult.analytics.talkTimeRatio,
-        transcriptionResult.analytics.interruptions,
-        transcriptionResult.analytics.speakingPace,
-        JSON.stringify(transcriptionResult.analytics.sentimentTrend),
-        transcriptionResult.analytics.engagementScore
-      ).run();
+          const result = await transcriptionSvc.processCallRecording(id, audioBuffer, 'en');
 
-      // Log activity
-      await createActivityLog(
-        c.env.DB,
-        auth.userId,
-        'transcription_completed',
-        'call',
-        id,
-        { 
-          sentiment: transcriptionResult.sentiment.label,
-          topics: transcriptionResult.keyTopics.length,
-          quality: transcriptionResult.qualityScore 
+          // Store transcription in calls table (uses schema columns from 0002_add_transcription.sql)
+          await c.env.DB.prepare(`
+            UPDATE calls
+            SET transcription = ?,
+                transcription_status = 'done',
+                transcription_summary = ?,
+                transcription_key_points = ?,
+                transcription_sentiment_analysis = ?,
+                transcription_processed_at = ?
+            WHERE id = ?
+          `).bind(
+            result.transcription,
+            result.summary,
+            JSON.stringify(result.key_points),
+            JSON.stringify(result.sentiment_analysis),
+            new Date().toISOString(),
+            id
+          ).run();
+
+          // Store segments as individual rows
+          for (const segment of result.segments) {
+            await c.env.DB.prepare(`
+              INSERT INTO transcription_segments
+              (call_id, segment_index, start_time, end_time, speaker, text, confidence)
+              VALUES (?, ?, ?, ?, ?, ?, ?)
+            `).bind(
+              id,
+              segment.segment_index,
+              segment.start_time,
+              segment.end_time,
+              segment.speaker,
+              segment.text,
+              segment.confidence
+            ).run();
+          }
+
+          // Store analytics
+          const analytics = result.analytics;
+          await c.env.DB.prepare(`
+            INSERT INTO call_analytics
+            (call_id, talk_time_agent, talk_time_customer, interruptions_count,
+             silence_duration, sentiment_score, engagement_score, key_topics,
+             action_items, objections_raised, buying_signals, next_steps, call_quality_score)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).bind(
+            id,
+            analytics.talk_time_agent,
+            analytics.talk_time_customer,
+            analytics.interruptions_count,
+            analytics.silence_duration,
+            analytics.sentiment_score,
+            analytics.engagement_score,
+            JSON.stringify(analytics.key_topics),
+            JSON.stringify(analytics.action_items),
+            JSON.stringify(analytics.objections_raised),
+            JSON.stringify(analytics.buying_signals),
+            analytics.next_steps,
+            analytics.call_quality_score
+          ).run();
+
+          await createActivityLog(
+            c.env.DB,
+            auth.userId,
+            'transcription_completed',
+            'call',
+            id,
+            {
+              sentiment: result.sentiment_analysis.overall_sentiment,
+              topics: result.key_points.length,
+              quality: analytics.call_quality_score
+            }
+          );
+        } catch (bgError) {
+          console.error(`Background transcription failed for call ${id}:`, bgError);
+          await c.env.DB.prepare('UPDATE calls SET transcription_status = ? WHERE id = ?')
+            .bind('failed', id)
+            .run();
         }
-      );
+      })()
+    );
 
-      return c.json({ 
-        data: transcriptionResult, 
-        message: 'Call transcribed successfully' 
-      });
-
-    } catch (transcriptionError) {
-      // Update status to failed
-      await c.env.DB.prepare('UPDATE calls SET transcription_status = ? WHERE id = ?')
-        .bind('failed', id)
-        .run();
-      
-      throw transcriptionError;
-    }
+    return c.json(
+      { message: 'Transcription started', callId: id, status: 'processing' },
+      202
+    );
 
   } catch (error) {
-    console.error('Error transcribing call:', error);
-    return c.json({ error: 'Failed to transcribe call' }, 500);
+    console.error('Error starting transcription:', error);
+    return c.json({ error: 'Failed to start transcription' }, 500);
   }
 });
+
 
 // =====================================================
 // GET CALL TRANSCRIPTION
@@ -505,8 +539,8 @@ callRoutes.get('/:id/transcription', async (c) => {
   try {
     // Check if call exists and user has access
     const call = await c.env.DB.prepare(`
-      SELECT c.*, 
-             GROUP_CONCAT(ts.segment_id || ':' || ts.start_time || ':' || ts.end_time || ':' || ts.speaker || ':' || ts.text || ':' || ts.confidence, '|') as segments
+      SELECT c.*,
+             GROUP_CONCAT(ts.segment_index || ':' || ts.start_time || ':' || ts.end_time || ':' || ts.speaker || ':' || ts.text || ':' || COALESCE(ts.confidence, 0), '|') as segments_raw
       FROM calls c
       LEFT JOIN transcription_segments ts ON c.id = ts.call_id
       WHERE c.id = ?
@@ -526,31 +560,47 @@ callRoutes.get('/:id/transcription', async (c) => {
       .bind(id)
       .first();
 
-    // Parse segments
-    const segments = call.segments ? call.segments.split('|').map(seg => {
-      const [segmentId, start, end, speaker, text, confidence] = seg.split(':');
+    // Parse segments. The concatenated format is:
+    // `segment_index:start_time:end_time:speaker:text:confidence`
+    // Since `text` may contain colons, we extract the first 4 and last 1 field
+    // positionally, and treat everything in between as the text body.
+    const segments = call.segments_raw ? String(call.segments_raw).split('|').map(seg => {
+      const parts = seg.split(':');
+      // Minimum 6 parts expected; guard against malformed rows
+      if (parts.length < 6) {
+        console.warn(`Malformed transcription segment for call ${id}: "${seg}"`);
+        return null;
+      }
+      const [segIndex, start, end, speaker] = parts;
+      const confidence = parts[parts.length - 1];
+      const text = parts.slice(4, parts.length - 1).join(':');
       return {
-        id: parseInt(segmentId),
-        start: parseFloat(start),
-        end: parseFloat(end),
+        segment_index: parseInt(segIndex),
+        start_time: parseFloat(start),
+        end_time: parseFloat(end),
         speaker,
         text,
         confidence: parseFloat(confidence)
       };
-    }) : [];
+    }).filter(Boolean) : [];
+
+    // Parse sentiment analysis from stored JSON
+    let sentimentAnalysis = null;
+    if (call.transcription_sentiment_analysis) {
+      try {
+        sentimentAnalysis = JSON.parse(String(call.transcription_sentiment_analysis));
+      } catch {
+        sentimentAnalysis = null;
+      }
+    }
 
     const transcriptionData = {
       status: call.transcription_status,
-      transcript: call.transcription ? JSON.parse(call.transcription) : null,
-      summary: call.transcription_summary,
-      sentiment: {
-        score: call.sentiment_score,
-        label: call.sentiment_score > 0.1 ? 'positive' : call.sentiment_score < -0.1 ? 'negative' : 'neutral'
-      },
-      keyTopics: call.key_topics ? JSON.parse(call.key_topics) : [],
-      actionItems: call.action_items ? JSON.parse(call.action_items) : [],
-      nextSteps: call.next_steps ? JSON.parse(call.next_steps) : [],
-      qualityScore: call.call_quality_score,
+      transcription: call.transcription || null,
+      summary: call.transcription_summary || null,
+      key_points: call.transcription_key_points ? JSON.parse(String(call.transcription_key_points)) : [],
+      sentiment_analysis: sentimentAnalysis,
+      processed_at: call.transcription_processed_at || null,
       segments,
       analytics
     };
