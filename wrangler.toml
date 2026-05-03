@@ -63,15 +63,6 @@ database_name = "scholarix-crm-db-dev"
 database_id = "YOUR_DEV_DATABASE_ID_HERE"
 
 # =====================================================
-# BUILD CONFIGURATION
-# =====================================================
-[build]
-command = "npm run build"
-
-[build.upload]
-format = "service-worker"
-
-# =====================================================
 # COMPATIBILITY FLAGS
 # =====================================================
 compatibility_flags = ["nodejs_compat"]

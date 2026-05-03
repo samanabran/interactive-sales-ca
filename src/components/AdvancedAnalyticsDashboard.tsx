@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { 
   TrendUp, 
-  TrendDown, 
   Phone, 
   Users, 
   Target,
@@ -16,7 +15,6 @@ import {
   CheckCircle,
   XCircle,
   ArrowUp,
-  ArrowDown
 } from '@phosphor-icons/react';
 import {
   LineChart,
@@ -313,7 +311,7 @@ export default function AdvancedAnalyticsDashboard() {
                       fill="#8884d8"
                       dataKey="value"
                     >
-                      {outcomeDistribution.map((entry, index) => (
+                      {outcomeDistribution.map((_entry, index) => (
                         <Cell key={`cell-${index}`} fill={OUTCOME_COLORS[index % OUTCOME_COLORS.length]} />
                       ))}
                     </Pie>

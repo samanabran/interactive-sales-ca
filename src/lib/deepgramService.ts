@@ -169,20 +169,20 @@ export class DeepgramService {
         characteristics: ['warm', 'friendly', 'conversational'],
         useCase: ['casual chat', 'customer service']
       },
-      // ===== Additional English Voices =====
+      // ===== Additional English Voices (verified Deepgram Aura-2 models) =====
       {
-        model: 'aura-2-solomon-en',
-        name: 'Solomon',
+        model: 'aura-2-arcas-en',
+        name: 'Arcas',
         gender: 'male',
-        age: 'senior',
+        age: 'adult',
         accent: 'American',
         language: 'en-US',
         characteristics: ['wise', 'authoritative', 'measured'],
         useCase: ['executive', 'finance', 'B2B sales']
       },
       {
-        model: 'aura-2-atlas-en',
-        name: 'Atlas',
+        model: 'aura-2-zeus-en',
+        name: 'Zeus',
         gender: 'male',
         age: 'adult',
         accent: 'American',
@@ -190,24 +190,23 @@ export class DeepgramService {
         characteristics: ['strong', 'confident', 'direct'],
         useCase: ['sales', 'negotiation', 'B2B']
       },
-      // ===== British English =====
       {
-        model: 'aura-2-lyra-en-gb',
-        name: 'Lyra',
+        model: 'aura-2-stella-en',
+        name: 'Stella',
         gender: 'female',
         age: 'adult',
-        accent: 'British',
-        language: 'en-GB',
+        accent: 'American',
+        language: 'en-US',
         characteristics: ['sophisticated', 'professional', 'clear'],
         useCase: ['business', 'executive', 'professional services']
       },
       {
-        model: 'aura-2-hermes-en-gb',
-        name: 'Hermes',
-        gender: 'male',
+        model: 'aura-2-andromeda-en',
+        name: 'Andromeda',
+        gender: 'female',
         age: 'adult',
-        accent: 'British',
-        language: 'en-GB',
+        accent: 'American',
+        language: 'en-US',
         characteristics: ['crisp', 'professional', 'articulate'],
         useCase: ['finance', 'legal', 'consulting']
       }
@@ -217,13 +216,13 @@ export class DeepgramService {
     if (company === 'eiger-marvel-hr') {
       // HR Consultancy: Professional, warm, clear voices
       return allVoices.filter(v => 
-        ['aura-2-asteria-en', 'aura-2-orion-en', 'aura-2-luna-en', 'aura-2-arcas-en', 'aura-2-lyra-en-gb']
+        ['aura-2-asteria-en', 'aura-2-orion-en', 'aura-2-luna-en', 'aura-2-arcas-en', 'aura-2-stella-en']
           .includes(v.model)
       );
     } else {
       // SGC TECH AI: Technical, confident, authoritative voices
       return allVoices.filter(v => 
-        ['aura-2-thalia-en', 'aura-2-zeus-en', 'aura-2-solomon-en', 'aura-2-atlas-en', 'aura-2-hermes-en-gb']
+        ['aura-2-thalia-en', 'aura-2-zeus-en', 'aura-2-arcas-en', 'aura-2-andromeda-en']
           .includes(v.model)
       );
     }
@@ -238,14 +237,14 @@ export class DeepgramService {
   ): string {
     const voiceMap: Record<string, string> = {
       // EIGER MARVEL HR
-      'hr-manager': 'aura-2-orion-en',        // Clear, professional operations manager
-      'hr-business-owner': 'aura-2-thalia-en',  // Enthusiastic, energetic young professional
-      'hr-finance-decider': 'aura-2-solomon-en', // Wise, authoritative finance decision-maker
+      'hr-manager': 'aura-2-orion-en',          // Clear, professional operations manager
+      'hr-business-owner': 'aura-2-thalia-en',   // Enthusiastic, energetic young professional
+      'hr-finance-decider': 'aura-2-arcas-en',    // Wise, authoritative finance decision-maker
       
       // SGC TECH AI
-      'tech-it-manager': 'aura-2-zeus-en',      // Authoritative technical director
-      'tech-business-owner': 'aura-2-atlas-en',   // Strong, confident CEO
-      'tech-operations': 'aura-2-asteria-en'   // Warm, professional operations
+      'tech-it-manager': 'aura-2-zeus-en',        // Authoritative technical director
+      'tech-business-owner': 'aura-2-zeus-en',    // Strong, confident CEO
+      'tech-operations': 'aura-2-asteria-en'     // Warm, professional operations
     };
 
     return voiceMap[personaType] || 'aura-2-asteria-en';

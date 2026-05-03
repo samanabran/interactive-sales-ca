@@ -120,7 +120,14 @@ export function useRolePlaySession({
   const [isTyping, setIsTyping] = useState(false);
   const [showSetup, setShowSetup] = useState(true);
   const [ttsEnabled, setTtsEnabled] = useState(true);
-  const [ttsProvider, setTtsProvider] = useState<TTSProvider>('deepgram');
+  const [ttsProvider, setTtsProvider] = useState<TTSProvider>(() => {
+    // Auto-detect best available provider from environment variables
+    const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    const deepgramKey = import.meta.env.VITE_DEEPGRAM_API_KEY;
+    if (geminiKey) return 'gemini';
+    if (deepgramKey) return 'deepgram';
+    return 'edge';
+  });
   const [sessionMetrics, setSessionMetrics] = useState<SessionMetrics | null>(null);
   const [currentStage, setCurrentStage] = useState('greeting');
   const [objectionsHandled, setObjectionsHandled] = useState<string[]>([]);
@@ -183,32 +190,51 @@ export function useRolePlaySession({
     if (!ttsEnabledRef.current) return;
     const voiceAgent = getVoiceAgentForB2BPersona(persona.company, persona.type as B2BPersonaType);
 
+    const browserFallback = () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'en-US';
+        utter.rate = 0.95;
+        utter.pitch = voiceAgent.gender === 'female' ? 1.1 : 0.9;
+        window.speechSynthesis.speak(utter);
+      }
+    };
+
     setIsSpeaking(true);
     try {
       const provider = ttsProviderRef.current;
-      if (provider === 'deepgram') {
-        if (!deepgramService.isAvailable()) {
-          toast.error('Deepgram API key not configured. Set VITE_DEEPGRAM_API_KEY in .env');
-          setIsSpeaking(false);
+
+      if (provider === 'gemini' && geminiTTS.isAvailable()) {
+        try {
+          await geminiTTS.playText(text, {
+            voice: voiceAgent.voice,
+            stylePrompt: voiceAgent.stylePrompt,
+            temperature: 0.8,
+          });
           return;
+        } catch {
+          // Fall through to Deepgram
         }
-        await deepgramService.playText(text, { model: voiceAgent.deepgramVoice ?? 'aura-2-asteria-en' });
-      } else if (provider === 'gemini') {
-        await geminiTTS.playText(text, {
-          voice: voiceAgent.voice,
-          stylePrompt: voiceAgent.stylePrompt,
-          temperature: 0.8,
-        });
-      } else if (provider === 'edge') {
+      }
+
+      if (deepgramService.isAvailable()) {
+        try {
+          await deepgramService.playText(text, { model: voiceAgent.deepgramVoice ?? 'aura-2-asteria-en' });
+          return;
+        } catch {
+          // Fall through to Edge TTS
+        }
+      }
+
+      try {
         await edgeTTS.playText(text, voiceAgent.fallbackVoice ?? 'en-US-AriaNeural');
+        return;
+      } catch {
+        // Final fallback: browser speechSynthesis
+        browserFallback();
       }
     } catch {
-      // Fallback chain: try Edge TTS on any failure
-      try {
-        if (ttsProviderRef.current !== 'edge') {
-          await edgeTTS.playText(text, voiceAgent.fallbackVoice ?? 'en-US-AriaNeural');
-        }
-      } catch { /* silent */ }
+      browserFallback();
     } finally {
       setIsSpeaking(false);
     }

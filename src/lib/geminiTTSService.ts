@@ -1,10 +1,10 @@
 /**
- * Gemini 3.1 Flash TTS Service - Google's latest human-like TTS
+ * Gemini 2.5 Flash TTS Service - Google's most realistic human-like TTS
  * Competes with ElevenLabs - Free tier available
- * 70+ languages, 200+ audio tags, multi-speaker support
+ * 30+ expressive voices, style control via systemInstruction
  * 
  * Get free API key: https://ai.google.dev/
- * Free tier: Generous limits for development
+ * Model: gemini-2.5-flash-preview-tts
  */
 
 export interface GeminiTTSOptions {
@@ -43,37 +43,36 @@ export class GeminiTTSService {
    */
   async generateSpeech(text: string, options: GeminiTTSOptions = {}): Promise<Blob> {
     const {
-      voice = 'Charon',  // Default: Professional male
-      stylePrompt = 'Speak naturally and conversationally',
+      voice = 'Charon',
+      stylePrompt,
       temperature = 1.0
     } = options;
 
     try {
+      const requestBody: Record<string, unknown> = {
+        contents: [{ parts: [{ text }] }],
+        generationConfig: {
+          temperature,
+          responseModalities: ['AUDIO'],
+          speechConfig: {
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: voice }
+            }
+          }
+        }
+      };
+
+      // Style prompts via systemInstruction produce far more realistic, character-driven speech
+      if (stylePrompt) {
+        requestBody.systemInstruction = { parts: [{ text: stylePrompt }] };
+      }
+
       const response = await fetch(
-        `${this.baseUrl}/models/gemini-3.1-flash-tts:generateContent?key=${this.apiKey}`,
+        `${this.baseUrl}/models/gemini-2.5-flash-preview-tts:generateContent?key=${this.apiKey}`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{
-                text: `[Voice: ${voice}]\n[Style: ${stylePrompt}]\n${text}`
-              }]
-            }],
-            generationConfig: {
-              temperature: temperature,
-              responseModalities: ['AUDIO'],
-              speechConfig: {
-                voiceConfig: {
-                  prebuiltVoiceConfig: {
-                    voiceName: voice
-                  }
-                }
-              }
-            }
-          })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(requestBody)
         }
       );
 
@@ -83,23 +82,22 @@ export class GeminiTTSService {
       }
 
       const data = await response.json();
-      
-      // Extract audio data (base64 encoded)
-      const audioBase64 = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      
-      if (!audioBase64) {
-        throw new Error('No audio data in response');
+      const inlineData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+
+      if (!inlineData?.data) {
+        throw new Error('No audio data in Gemini TTS response');
       }
 
-      // Convert base64 to blob
-      const audioBytes = Uint8Array.from(atob(audioBase64), c => c.charCodeAt(0));
-      const audioBlob = new Blob([audioBytes], { type: 'audio/wav' });
-      
-      return audioBlob;
+      const audioBytes = Uint8Array.from(atob(inlineData.data), c => c.charCodeAt(0));
+      return new Blob([audioBytes], { type: inlineData.mimeType || 'audio/wav' });
     } catch (error) {
       console.error('Gemini TTS error:', error);
       throw error;
     }
+  }
+
+  isAvailable(): boolean {
+    return !!this.apiKey;
   }
 
   /**
@@ -122,7 +120,7 @@ export class GeminiTTSService {
 
     try {
       const response = await fetch(
-        `${this.baseUrl}/models/gemini-3.1-flash-tts:generateContent?key=${this.apiKey}`,
+        `${this.baseUrl}/models/gemini-2.5-flash-preview-tts:generateContent?key=${this.apiKey}`,
         {
           method: 'POST',
           headers: {
@@ -157,14 +155,10 @@ export class GeminiTTSService {
       }
 
       const data = await response.json();
-      const audioBase64 = data.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      
-      if (!audioBase64) {
-        throw new Error('No audio data in response');
-      }
-
-      const audioBytes = Uint8Array.from(atob(audioBase64), c => c.charCodeAt(0));
-      return new Blob([audioBytes], { type: 'audio/wav' });
+      const multiInlineData = data.candidates?.[0]?.content?.parts?.[0]?.inlineData;
+      if (!multiInlineData?.data) throw new Error('No audio data in multi-speaker response');
+      const audioBytes = Uint8Array.from(atob(multiInlineData.data), c => c.charCodeAt(0));
+      return new Blob([audioBytes], { type: multiInlineData.mimeType || 'audio/wav' });
     } catch (error) {
       console.error('Multi-speaker TTS error:', error);
       throw error;
@@ -200,35 +194,32 @@ export class GeminiTTSService {
   /**
    * Get recommended voices for different personas (30+ available)
    */
+  /** Verified Gemini 2.5 Flash TTS voices mapped to B2B persona types */
   getPersonaVoices(): Record<string, { voice: string; description: string }[]> {
     return {
-      'eager-student': [
-        { voice: 'Charon', description: 'Enthusiastic male, eager to learn' },
-        { voice: 'Kore', description: 'Friendly female, supportive tone' }
+      'hr-manager': [
+        { voice: 'Charon', description: 'Professional male, measured and authoritative' },
+        { voice: 'Orus', description: 'Efficient male, brisk and results-driven' }
       ],
-      'skeptical-parent': [
-        { voice: 'Puck', description: 'Thoughtful male, slightly skeptical' },
-        { voice: 'Schedar', description: 'Mature female, cautious tone' }
+      'finance-decider': [
+        { voice: 'Algenib', description: 'Gravelly authoritative male, deliberate pacing' },
+        { voice: 'Schedar', description: 'Precise female, cool and measured' }
       ],
-      'price-sensitive': [
-        { voice: 'Fenrir', description: 'Direct male, budget-conscious' },
-        { voice: 'Leda', description: 'Practical female, careful with money' }
+      'skeptical-buyer': [
+        { voice: 'Puck', description: 'Thoughtful male, guarded but engaged' },
+        { voice: 'Leda', description: 'Careful female, needs convincing' }
       ],
-      'busy-professional': [
-        { voice: 'Orus', description: 'Efficient male, time-conscious' },
-        { voice: 'Vindemiatrix', description: 'Professional female, direct style' }
+      'it-manager': [
+        { voice: 'Algenib', description: 'Technical male, analytical precision' },
+        { voice: 'Alnilam', description: 'Firm male, probing questions' }
       ],
-      'friendly-neighbor': [
-        { voice: 'Alnilam', description: 'Warm male, approachable' },
-        { voice: 'Achalmar', description: 'Friendly female, conversational' }
+      'business-owner': [
+        { voice: 'Mintaka', description: 'Deep urgent male, visionary CEO energy' },
+        { voice: 'Fenrir', description: 'Excitable male, competitive and decisive' }
       ],
-      'technical-expert': [
-        { voice: 'Algenib', description: 'Analytical male, precise' },
-        { voice: 'Phecda', description: 'Technical female, detail-oriented' }
-      ],
-      'urgent-buyer': [
-        { voice: 'Mintaka', description: 'Urgent male, quick decision-maker' },
-        { voice: 'Aludra', description: 'Decisive female, action-oriented' }
+      'operations-manager': [
+        { voice: 'Sulafat', description: 'Warm professional female, practical focus' },
+        { voice: 'Vindemiatrix', description: 'Gentle female, collaborative tone' }
       ]
     };
   }
