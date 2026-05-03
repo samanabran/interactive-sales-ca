@@ -28,11 +28,27 @@ export interface MultiSpeakerConfig {
 }
 
 export class GeminiTTSService {
-  private apiKey: string;
   private baseUrl: string = 'https://generativelanguage.googleapis.com/v1beta';
 
-  constructor(apiKey: string = '') {
-    this.apiKey = apiKey || import.meta.env.VITE_GEMINI_API_KEY || '';
+  constructor(_apiKey: string = '') {
+    // Key is read dynamically from localStorage or env on each call
+  }
+
+  private getApiKey(): string {
+    // localStorage takes priority (set via in-app settings, persists across sessions)
+    return (
+      (typeof localStorage !== 'undefined' && localStorage.getItem('gemini_api_key')) ||
+      import.meta.env.VITE_GEMINI_API_KEY ||
+      ''
+    );
+  }
+
+  static saveApiKey(key: string): void {
+    localStorage.setItem('gemini_api_key', key.trim());
+  }
+
+  static clearApiKey(): void {
+    localStorage.removeItem('gemini_api_key');
   }
 
   /**
@@ -68,7 +84,7 @@ export class GeminiTTSService {
       }
 
       const response = await fetch(
-        `${this.baseUrl}/models/gemini-2.5-flash-preview-tts:generateContent?key=${this.apiKey}`,
+        `${this.baseUrl}/models/gemini-2.5-flash-preview-tts:generateContent?key=${this.getApiKey()}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -97,7 +113,7 @@ export class GeminiTTSService {
   }
 
   isAvailable(): boolean {
-    return !!this.apiKey;
+    return !!this.getApiKey();
   }
 
   /**
@@ -120,7 +136,7 @@ export class GeminiTTSService {
 
     try {
       const response = await fetch(
-        `${this.baseUrl}/models/gemini-2.5-flash-preview-tts:generateContent?key=${this.apiKey}`,
+        `${this.baseUrl}/models/gemini-2.5-flash-preview-tts:generateContent?key=${this.getApiKey()}`,
         {
           method: 'POST',
           headers: {

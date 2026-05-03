@@ -14,6 +14,7 @@ import {
 } from '@phosphor-icons/react';
 import { CallErrorBoundary, AIErrorBoundary, LeadErrorBoundary } from '@/components/ErrorBoundaries';
 import { QueryProvider } from '@/lib/queryClient';
+import { VoiceSettingsButton } from '@/components/VoiceSettingsPanel';
 
 // Lazy load heavy components
 const RolePlayPage = lazy(() => import('@/pages/RolePlayPage'));
@@ -78,6 +79,9 @@ function MainLayout() {
                   {selectedCompany === 'eiger-marvel-hr' ? 'EIGER MARVEL HR' : 'SGC TECH AI'}
                 </Badge>
               )}
+            </div>
+            <div className="flex items-center space-x-3">
+              <VoiceSettingsButton />
             </div>
           </div>
         </div>
